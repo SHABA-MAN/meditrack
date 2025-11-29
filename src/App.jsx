@@ -26,7 +26,6 @@ import {
   BookOpen,
   Save,
   FastForward,
-  CalendarClock,
   Info,
   Trash2,
   AlertTriangle,
@@ -34,11 +33,11 @@ import {
   LogIn,
   LogOut,
   User,
-  Layout,
   Plus,
   Minus,
   LayoutList,
-  ChevronLeft
+  Target,
+  GripHorizontal
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -75,6 +74,7 @@ const MediTrack = () => {
   // Data State
   const [config, setConfig] = useState(null); 
   const [lectures, setLectures] = useState({});
+  const [focusedTask, setFocusedTask] = useState(null); // The task currently in the drop zone
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -209,6 +209,11 @@ const MediTrack = () => {
       id: lectureId, subject, number, stage: nextStage, lastStudied: today.toISOString(), nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(), isCompleted
     };
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
+    
+    // If completed or updated, remove from focus
+    setFocusedTask(null);
+    setTimerActive(false);
+    setTimeLeft(25*60);
   };
 
   const manualStageUpdate = async (subject, number, newStage) => {
@@ -234,6 +239,29 @@ const MediTrack = () => {
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
   };
 
+  // --- Drag & Drop Logic ---
+  const handleDragStart = (e, task) => {
+    e.dataTransfer.setData("task", JSON.stringify(task));
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const taskData = e.dataTransfer.getData("task");
+    if (taskData) {
+      const task = JSON.parse(taskData);
+      setFocusedTask(task);
+      setTimerActive(false);
+      setTimeLeft(25 * 60);
+      setTimerMode('focus');
+    }
+  };
+
   // --- Helpers ---
   const getDueReviews = () => {
     const endOfDay = new Date();
@@ -241,15 +269,6 @@ const MediTrack = () => {
     return Object.values(lectures).filter(l => {
       if (l.isCompleted || !l.nextReview || l.nextReview === 'COMPLETED') return false;
       return new Date(l.nextReview) <= endOfDay;
-    }).sort((a,b) => new Date(a.nextReview) - new Date(b.nextReview));
-  };
-
-  const getUpcomingReviews = () => {
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    return Object.values(lectures).filter(l => {
-      if (l.isCompleted || !l.nextReview || l.nextReview === 'COMPLETED') return false;
-      return new Date(l.nextReview) > endOfDay;
     }).sort((a,b) => new Date(a.nextReview) - new Date(b.nextReview));
   };
 
@@ -303,7 +322,7 @@ const MediTrack = () => {
 
   if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-slate-600 font-bold">جاري تحميل النظام...</div>;
 
-  // LOGIN SCREEN (Centered Card)
+  // LOGIN SCREEN
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4" dir="rtl">
@@ -312,7 +331,7 @@ const MediTrack = () => {
              <BrainCircuit size={32} />
           </div>
           <h1 className="text-2xl font-bold text-slate-800 mb-2">MediTrack Pro</h1>
-          <p className="text-slate-500 mb-8 text-sm">إدارة المنهج الطبي بنظام التكرار المتباعد</p>
+          <p className="text-slate-500 mb-8 text-sm">نظام السحب والإفلات الذكي للمذاكرة</p>
           <button onClick={handleGoogleLogin} className="w-full bg-slate-800 text-white py-3 rounded-md font-bold flex items-center justify-center gap-2 mb-3 hover:bg-slate-900 transition">
             <LogIn size={18} /> تسجيل الدخول (Google)
           </button>
@@ -326,14 +345,12 @@ const MediTrack = () => {
   }
 
   const reviews = getDueReviews();
-  const upcoming = getUpcomingReviews();
   const news = getNewSuggestions();
 
-  // DASHBOARD LAYOUT
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans" dir="rtl">
       
-      {/* Top Navigation Bar */}
+      {/* Top Nav */}
       <nav className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="bg-slate-900 text-white p-2 rounded-md">
@@ -341,14 +358,11 @@ const MediTrack = () => {
           </div>
           <div>
              <h1 className="font-bold text-lg text-slate-800 leading-tight">MediTrack</h1>
-             <p className="text-[10px] text-slate-500 font-medium">لوحة التحكم</p>
+             <p className="text-[10px] text-slate-500 font-medium">نظام السحب والتركيز</p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500 ml-2 hidden sm:inline">
-            مرحباً، {user.isAnonymous ? 'زائر' : user.displayName?.split(' ')[0]}
-          </span>
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -356,154 +370,147 @@ const MediTrack = () => {
         </div>
       </nav>
 
-      {/* Main Grid Content - 4 Columns Layout */}
-      <main className="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* Main Grid: 3 Columns */}
+      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-80px)]">
         
-        {/* COLUMN 1 (Right): Timer & Info (3/12) */}
-        <aside className="lg:col-span-3 space-y-4">
-          {/* Timer Widget */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className={`p-4 text-center text-white transition-colors duration-300 ${timerMode === 'focus' ? 'bg-slate-800' : 'bg-emerald-600'}`}>
-              <div className="flex justify-center items-center gap-2 mb-2 opacity-80">
-                <Clock size={16} />
-                <span className="text-xs font-bold tracking-wider">{timerMode === 'focus' ? 'FOCUS' : 'BREAK'}</span>
-              </div>
-              <div className="text-5xl font-mono font-bold tracking-widest mb-2">{fmtTime(timeLeft)}</div>
-            </div>
-            <div className="p-3 bg-gray-50 flex gap-2">
-               <button onClick={() => setTimerActive(!timerActive)} className={`flex-1 py-2 rounded-md font-bold text-sm text-white transition ${timerActive ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-800'}`}>
-                 {timerActive ? 'إيقاف' : 'بدء'}
-               </button>
-               <button onClick={() => {setTimerActive(false); setTimeLeft(25*60); setTimerMode('focus')}} className="px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-500 hover:bg-gray-100">
-                 <RotateCcw size={16} />
-               </button>
-            </div>
-          </div>
+        {/* COLUMN 1: FOCUS ZONE (Drop Target) */}
+        <div 
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className={`lg:col-span-1 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-6 relative overflow-hidden ${focusedTask ? 'bg-white border-blue-500 shadow-xl scale-[1.02]' : 'bg-slate-50 border-slate-300 hover:border-blue-400 hover:bg-slate-100'}`}
+        >
+          {focusedTask ? (
+            <div className="w-full h-full flex flex-col relative z-10">
+               <div className="flex justify-between items-start mb-8">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold text-white ${SUBJECTS[focusedTask.subject]?.badge}`}>
+                    {focusedTask.subject}
+                  </span>
+                  <button onClick={() => setFocusedTask(null)} className="text-slate-400 hover:text-red-500 transition"><X size={24}/></button>
+               </div>
+               
+               <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <h2 className="text-3xl font-black text-slate-800 mb-2">محاضرة {focusedTask.number}</h2>
+                  <p className="text-slate-500 mb-8">{focusedTask.stage === 0 ? 'مذاكرة جديدة' : `مراجعة رقم ${focusedTask.stage}`}</p>
+                  
+                  <div className={`text-7xl font-mono font-bold tracking-widest mb-8 ${timerMode === 'focus' ? 'text-slate-800' : 'text-emerald-600'}`}>
+                    {fmtTime(timeLeft)}
+                  </div>
 
-          {/* Stats Summary */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h3 className="font-bold text-sm text-slate-700 mb-3 border-b pb-2">ملخص المهام</h3>
-            <div className="space-y-2 text-sm">
-               <div className="flex justify-between">
-                 <span className="text-slate-500">مراجعات اليوم:</span>
-                 <span className="font-bold text-amber-600">{reviews.length}</span>
+                  <div className="flex gap-4 w-full max-w-xs">
+                    <button 
+                      onClick={() => setTimerActive(!timerActive)} 
+                      className={`flex-1 py-4 rounded-xl font-bold text-lg text-white shadow-lg transition transform active:scale-95 ${timerActive ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-900 hover:bg-slate-800'}`}
+                    >
+                      {timerActive ? 'إيقاف' : 'ابدأ التركيز'}
+                    </button>
+                    <button 
+                      onClick={() => {setTimerActive(false); setTimeLeft(25*60); setTimerMode('focus')}} 
+                      className="p-4 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition shadow-sm"
+                    >
+                      <RotateCcw size={24} />
+                    </button>
+                  </div>
                </div>
-               <div className="flex justify-between">
-                 <span className="text-slate-500">جديد مقترح:</span>
-                 <span className="font-bold text-blue-600">{news.length}</span>
-               </div>
-               <div className="flex justify-between">
-                 <span className="text-slate-500">قادمة:</span>
-                 <span className="font-bold text-slate-700">{upcoming.length}</span>
-               </div>
-            </div>
-          </div>
-        </aside>
 
-        {/* COLUMN 2: Due Reviews (3/12) */}
-        <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                <BrainCircuit size={18} className="text-amber-500" /> مراجعات اليوم
+               <button 
+                 onClick={() => updateLectureStatus(focusedTask.id, focusedTask.subject, focusedTask.number, focusedTask.stage)}
+                 className="mt-8 w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-600 transition flex items-center justify-center gap-2"
+               >
+                 <CheckCircle size={24} />
+                 تم الانتهاء
+               </button>
+            </div>
+          ) : (
+            <div className="text-center pointer-events-none opacity-50">
+               <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                 <Target size={48} />
+               </div>
+               <h3 className="text-xl font-bold text-slate-700 mb-2">منطقة التركيز</h3>
+               <p className="text-slate-500">اسحب أي محاضرة هنا لتبدأ المذاكرة</p>
+            </div>
+          )}
+        </div>
+
+        {/* COLUMN 2: REVIEWS (Draggable) */}
+        <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <BrainCircuit size={18} className="text-amber-500" /> المراجعات
               </h2>
-              {reviews.length > 0 && <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{reviews.length}</span>}
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full">{reviews.length}</span>
             </div>
-
-            <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
+            
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {reviews.length === 0 ? (
-                 <div className="bg-white border border-gray-200 border-dashed rounded-lg p-6 text-center">
-                   <div className="text-green-500 mb-2 flex justify-center"><CheckCircle size={24} /></div>
-                   <p className="text-sm text-slate-500">ممتاز! لا توجد مراجعات.</p>
+                 <div className="text-center py-10 opacity-50">
+                   <CheckCircle size={40} className="mx-auto mb-2 text-green-500" />
+                   <p>عظيم! لا توجد مراجعات.</p>
                  </div>
               ) : (
                 reviews.map(r => (
-                  <div key={r.id} className="bg-white p-3 rounded-lg border-r-4 border-amber-400 border border-gray-200 shadow-sm flex justify-between items-center group hover:shadow-md transition">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
-                        <span className="font-bold text-sm">Lec {r.number}</span>
+                  <div 
+                    key={r.id}
+                    draggable 
+                    onDragStart={(e) => handleDragStart(e, r)}
+                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <GripHorizontal size={20} className="text-slate-300" />
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
+                            <span className="font-bold text-slate-800">Lec {r.number}</span>
+                          </div>
+                          <p className="text-xs text-slate-400">تكرار رقم {r.stage}</p>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-400">تكرار {r.stage}</div>
                     </div>
-                    <button onClick={() => updateLectureStatus(r.id, r.subject, r.number, r.stage)} className="text-slate-300 hover:text-green-600 p-1">
-                      <CheckCircle size={24} />
-                    </button>
                   </div>
                 ))
               )}
             </div>
         </div>
 
-        {/* COLUMN 3: New Lectures (3/12) - Moved Here */}
-        <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                <BookOpen size={18} className="text-blue-500" /> محاضرات جديدة
+        {/* COLUMN 3: NEW LECTURES (Draggable) */}
+        <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <BookOpen size={18} className="text-blue-500" /> الجديد
               </h2>
-              {news.length > 0 && <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">{news.length}</span>}
+              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{news.length}</span>
             </div>
             
-            <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {news.length === 0 ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center text-sm text-slate-400">
-                  {config ? "انتهى الجديد!" : "اضبط المنهج ⚙️"}
+                <div className="text-center py-10 opacity-50">
+                  <p>انتهى الجديد! راجع الإعدادات ⚙️</p>
                 </div>
               ) : (
                 news.map(n => (
-                  <div key={n.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm hover:shadow-md transition">
-                     <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
-                          {n.subject}
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-700">Lec {n.number}</p>
-                        </div>
+                  <div 
+                    key={n.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, n)}
+                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3"
+                  >
+                     <GripHorizontal size={20} className="text-slate-300" />
+                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
+                       {n.subject}
                      </div>
-                     <button onClick={() => updateLectureStatus(n.id, n.subject, n.number, 0)} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded hover:bg-blue-100 transition">
-                       بدء
-                     </button>
+                     <div>
+                       <p className="font-bold text-slate-700">Lecture {n.number}</p>
+                       <p className="text-xs text-slate-400">جديد تماماً</p>
+                     </div>
                   </div>
                 ))
               )}
             </div>
-        </div>
-
-        {/* COLUMN 4 (Left): Upcoming Schedule (3/12) */}
-        <div className="lg:col-span-3">
-           <div className="bg-slate-50 rounded-lg border border-slate-200 h-full flex flex-col">
-              <div className="p-4 border-b border-slate-200 bg-white rounded-t-lg">
-                <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                   <CalendarClock size={16} /> الجدول القادم
-                </h2>
-              </div>
-              <div className="p-4 overflow-y-auto max-h-[500px] flex-1">
-                {upcoming.length === 0 ? (
-                   <p className="text-center text-xs text-slate-400 mt-10">الجدول فارغ.</p>
-                ) : (
-                   <div className="space-y-3">
-                     {upcoming.map(u => (
-                       <div key={u.id} className="flex items-center gap-3 text-sm">
-                          <div className={`w-1 h-8 rounded-full ${SUBJECTS[u.subject]?.badge}`}></div>
-                          <div className="flex-1">
-                             <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold text-slate-700 text-xs">{u.subject} - Lec {u.number}</span>
-                                <span className="text-[10px] bg-white border px-1 rounded text-slate-500">{formatDate(u.nextReview)}</span>
-                             </div>
-                             <div className="w-full bg-gray-200 rounded-full h-1">
-                               <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(u.stage/4)*100}%` }}></div>
-                             </div>
-                          </div>
-                       </div>
-                     ))}
-                   </div>
-                )}
-              </div>
-           </div>
         </div>
 
       </main>
 
-      {/* SETTINGS MODAL (Re-styled) */}
+      {/* SETTINGS MODAL */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -518,16 +525,14 @@ const MediTrack = () => {
             </div>
 
             <div className="p-6 overflow-y-auto bg-white flex-1">
-               {/* Tab Content Logic Same as before but cleaner UI */}
                {settingsTab === 'guide' && (
                   <div className="space-y-4 text-slate-600 text-sm">
-                     <h3 className="font-bold text-slate-800">نظام 1-2-4-7</h3>
-                     <p>هذا النظام مصمم لنقل المعلومات للذاكرة طويلة المدى عن طريق تباعد فترات المراجعة.</p>
-                     <ul className="list-disc list-inside space-y-1 bg-slate-50 p-4 rounded-md border border-slate-100">
-                        <li>مذاكرة جديد ⬅ مراجعة غداً.</li>
-                        <li>مراجعة 1 ⬅ بعد يومين.</li>
-                        <li>مراجعة 2 ⬅ بعد 4 أيام.</li>
-                        <li>مراجعة 3 ⬅ بعد أسبوع (تم الانتهاء).</li>
+                     <h3 className="font-bold text-slate-800">طريقة الاستخدام الجديدة 🖱️</h3>
+                     <p>النظام الآن يعتمد على السحب والإفلات للتركيز العميق.</p>
+                     <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
+                        <li><strong>الخطوة 1:</strong> اختر محاضرة من قائمة "المراجعات" أو "الجديد".</li>
+                        <li><strong>الخطوة 2:</strong> اسحبها بالماوس وارمها في المربع الكبير على اليمين (منطقة التركيز).</li>
+                        <li><strong>الخطوة 3:</strong> شغل المؤقت وابدأ المذاكرة. لما تخلص، اضغط "تم الانتهاء".</li>
                      </ul>
                   </div>
                )}
