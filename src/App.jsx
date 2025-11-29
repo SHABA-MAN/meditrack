@@ -341,15 +341,15 @@ const MediTrack = () => {
       {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Smooth Transition) 🌑 */}
       {focusedTask && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-700 ease-in-out transform origin-center ${
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 ease-in-out transform ${
             isFocusAnimating 
-              ? 'bg-slate-950 opacity-100 scale-100' 
-              : 'bg-slate-950/0 opacity-0 scale-90 pointer-events-none'
+              ? 'bg-slate-950 translate-x-0' 
+              : 'bg-slate-950 -translate-x-full'
           }`}
         >
           
           {/* Top Bar */}
-          <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-1000 delay-300 ${isFocusAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'}`}>
+          <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-700 delay-300 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
              <div className="flex items-center gap-4">
                 <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[focusedTask.subject]?.darkBadge || 'bg-slate-700'}`}>
                   {focusedTask.subject}
@@ -366,7 +366,7 @@ const MediTrack = () => {
           </div>
 
           {/* Main Focus Content */}
-          <div className={`flex flex-col items-center justify-center text-center max-w-2xl px-4 transition-all duration-700 delay-100 ${isFocusAnimating ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+          <div className={`flex flex-col items-center justify-center text-center max-w-2xl px-4 transition-all duration-700 delay-200 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
              
              {/* Icon */}
              <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
