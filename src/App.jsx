@@ -77,6 +77,7 @@ const MediTrack = () => {
   const [config, setConfig] = useState(null); 
   const [lectures, setLectures] = useState({});
   const [focusedTask, setFocusedTask] = useState(null); // The task currently in the drop zone
+  const [isFocusAnimating, setIsFocusAnimating] = useState(false); // Controls the transition state
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -188,6 +189,13 @@ const MediTrack = () => {
     setShowSettings(false);
   };
 
+  const closeFocusMode = () => {
+    setIsFocusAnimating(false); // Start exit animation
+    setTimeout(() => {
+      setFocusedTask(null); // Remove data after animation
+    }, 500); // Duration matches CSS transition
+  };
+
   const updateLectureStatus = async (lectureId, subject, number, currentStage) => {
     if (!user) return;
     const today = new Date();
@@ -207,8 +215,8 @@ const MediTrack = () => {
     };
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
     
-    // If completed or updated, remove from focus
-    setFocusedTask(null);
+    // Close Focus Mode with animation
+    closeFocusMode();
   };
 
   const manualStageUpdate = async (subject, number, newStage) => {
@@ -251,6 +259,8 @@ const MediTrack = () => {
     if (taskData) {
       const task = JSON.parse(taskData);
       setFocusedTask(task);
+      // Trigger animation after a brief delay to allow render
+      setTimeout(() => setIsFocusAnimating(true), 50);
     }
   };
 
@@ -328,12 +338,18 @@ const MediTrack = () => {
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY 🌑 */}
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Smooth Transition) 🌑 */}
       {focusedTask && (
-        <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col items-center justify-center animate-in fade-in duration-300">
+        <div 
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-700 ease-in-out transform origin-center ${
+            isFocusAnimating 
+              ? 'bg-slate-950 opacity-100 scale-100' 
+              : 'bg-slate-950/0 opacity-0 scale-90 pointer-events-none'
+          }`}
+        >
           
           {/* Top Bar */}
-          <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start">
+          <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-1000 delay-300 ${isFocusAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'}`}>
              <div className="flex items-center gap-4">
                 <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[focusedTask.subject]?.darkBadge || 'bg-slate-700'}`}>
                   {focusedTask.subject}
@@ -341,7 +357,7 @@ const MediTrack = () => {
                 <span className="text-slate-400 font-mono opacity-50">FOCUS MODE</span>
              </div>
              <button 
-                onClick={() => setFocusedTask(null)} 
+                onClick={closeFocusMode} 
                 className="p-3 bg-slate-900/50 hover:bg-red-500/20 text-slate-400 hover:text-red-500 rounded-full transition backdrop-blur-sm"
                 title="خروج من وضع التركيز"
              >
@@ -350,10 +366,10 @@ const MediTrack = () => {
           </div>
 
           {/* Main Focus Content */}
-          <div className="flex flex-col items-center justify-center text-center max-w-2xl px-4">
+          <div className={`flex flex-col items-center justify-center text-center max-w-2xl px-4 transition-all duration-700 delay-100 ${isFocusAnimating ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
              
              {/* Icon */}
-             <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl">
+             <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
                <BookOpen size={64} className="text-blue-400" />
              </div>
 
@@ -370,7 +386,7 @@ const MediTrack = () => {
              {/* Action Button */}
              <button 
                onClick={() => updateLectureStatus(focusedTask.id, focusedTask.subject, focusedTask.number, focusedTask.stage)}
-               className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20"
+               className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/40"
              >
                 <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
                 <CheckCircle size={28} className="ml-3" />
@@ -409,7 +425,7 @@ const MediTrack = () => {
         <div 
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center cursor-pointer group"
+          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center cursor-pointer group hover:scale-[1.02]"
         >
            <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
              <Maximize2 size={40} className="text-slate-400 group-hover:text-blue-500" />
