@@ -34,7 +34,11 @@ import {
   LogIn,
   LogOut,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Edit,
+  Plus,
+  Minus,
+  LayoutList
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -76,8 +80,9 @@ const MediTrack = () => {
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('config'); // 'guide', 'config', 'danger'
+  const [settingsTab, setSettingsTab] = useState('config'); // 'guide', 'config', 'manage', 'danger'
   const [tempConfig, setTempConfig] = useState({ TSF: 0, CBG: 0, BIO: 0, ANA: 0, PMD: 0 });
+  const [selectedManageSubject, setSelectedManageSubject] = useState('ANA'); // Default subject for manager
 
   // Timer State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -101,9 +106,7 @@ const MediTrack = () => {
     } catch (err) {
       console.error("Google Login Error:", err);
       
-      // تحسين رسائل الخطأ لتكون أوضح
       let errorMessage = "فشل تسجيل الدخول بجوجل.";
-      
       if (err.code === 'auth/popup-closed-by-user') {
         errorMessage = "تم إغلاق النافذة قبل اكتمال التسجيل.";
       } else if (err.code === 'auth/cancelled-popup-request') {
@@ -111,11 +114,10 @@ const MediTrack = () => {
       } else if (err.code === 'auth/popup-blocked') {
         errorMessage = "المتصفح منع النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.";
       } else if (err.code === 'auth/unauthorized-domain') {
-        errorMessage = "هذا النطاق (Domain) غير مصرح له. يرجى إضافته في إعدادات Firebase (Authorized Domains).";
+        errorMessage = "هذا النطاق (Domain) غير مصرح له. يرجى إضافته في إعدادات Firebase.";
       } else {
         errorMessage += ` (${err.message})`;
       }
-      
       setAuthError(errorMessage);
     }
   };
@@ -133,7 +135,6 @@ const MediTrack = () => {
   const handleLogout = async () => {
     if (confirm("هل تريد تسجيل الخروج؟")) {
       await signOut(auth);
-      // Reset states
       setConfig(null);
       setLectures({});
     }
@@ -149,7 +150,6 @@ const MediTrack = () => {
         setConfig(data);
         setTempConfig(data);
       } else {
-        // First time user: Show settings but start with guide
         setShowSettings(true);
         setSettingsTab('guide'); 
       }
@@ -228,11 +228,10 @@ const MediTrack = () => {
     let nextStage = currentStage + 1;
     let nextDate = new Date(); 
     
-    let interval = 0;
     let isCompleted = false;
 
     if (currentStage < INTERVALS.length) {
-      interval = INTERVALS[currentStage]; 
+      const interval = INTERVALS[currentStage]; 
       nextDate.setDate(nextDate.getDate() + interval);
     } else {
       isCompleted = true; 
@@ -245,6 +244,48 @@ const MediTrack = () => {
       stage: nextStage,
       lastStudied: today.toISOString(),
       nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(),
+      isCompleted
+    };
+
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
+  };
+
+  // --- Manual Edit Logic ---
+  const manualStageUpdate = async (subject, number, newStage) => {
+    if (!user) return;
+    const lectureId = `${subject}_${number}`;
+    
+    const today = new Date();
+    let nextDate = new Date();
+    let isCompleted = false;
+    let nextReviewVal = '';
+
+    if (newStage === 0) {
+      // Reset to New
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
+      return;
+    } 
+    
+    if (newStage > INTERVALS.length) {
+       isCompleted = true;
+       nextReviewVal = 'COMPLETED';
+    } else {
+      // If manually setting stage 2, it means they finished stage 1 actions. 
+      // Next review should be in INTERVALS[newStage - 1] days from NOW.
+      // Example: Set to Stage 1 (Review 1 done) -> Next is Review 2 (in 2 days).
+      // Wait, stage 1 means "Finished Study". Next is "Review 1" (Interval[0]=1 day).
+      const interval = INTERVALS[newStage - 1] || 7;
+      nextDate.setDate(nextDate.getDate() + interval);
+      nextReviewVal = nextDate.toISOString();
+    }
+
+    const data = {
+      id: lectureId,
+      subject,
+      number,
+      stage: newStage,
+      lastStudied: today.toISOString(),
+      nextReview: nextReviewVal,
       isCompleted
     };
 
@@ -288,6 +329,23 @@ const MediTrack = () => {
     return suggestions;
   };
 
+  const getManageLectures = () => {
+     if (!config || !selectedManageSubject) return [];
+     const total = parseInt(config[selectedManageSubject]) || 0;
+     const list = [];
+     for(let i=1; i<=total; i++) {
+        const id = `${selectedManageSubject}_${i}`;
+        const lecture = lectures[id];
+        list.push({
+           id, 
+           number: i, 
+           stage: lecture ? lecture.stage : 0,
+           nextReview: lecture ? lecture.nextReview : null
+        });
+     }
+     return list;
+  };
+
   // --- Timer ---
   useEffect(() => {
     let int = null;
@@ -309,6 +367,7 @@ const MediTrack = () => {
 
   const formatDate = (isoString) => {
     if (!isoString) return '';
+    if (isoString === 'COMPLETED') return 'مكتمل';
     const d = new Date(isoString);
     return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short' });
   };
@@ -373,27 +432,34 @@ const MediTrack = () => {
           </div>
 
           {/* Tabs */}
-          <div className="flex p-2 gap-2 bg-slate-50">
+          <div className="flex p-2 gap-2 bg-slate-50 flex-wrap">
             <button 
               onClick={() => setSettingsTab('guide')}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${settingsTab === 'guide' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:bg-white/50'}`}
+              className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${settingsTab === 'guide' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:bg-white/50'}`}
             >
-              <Info size={16} />
-              شرح النظام
+              <Info size={14} />
+              الشرح
             </button>
             <button 
               onClick={() => setSettingsTab('config')}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${settingsTab === 'config' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:bg-white/50'}`}
+              className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${settingsTab === 'config' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:bg-white/50'}`}
             >
-              <Settings size={16} />
-              إعداد المواد
+              <Settings size={14} />
+              الأعداد
+            </button>
+            <button 
+              onClick={() => setSettingsTab('manage')}
+              className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${settingsTab === 'manage' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:bg-white/50'}`}
+            >
+              <LayoutList size={14} />
+              التقدم
             </button>
             <button 
               onClick={() => setSettingsTab('danger')}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${settingsTab === 'danger' ? 'bg-white shadow text-red-600' : 'text-slate-400 hover:bg-white/50'}`}
+              className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${settingsTab === 'danger' ? 'bg-white shadow text-red-600' : 'text-slate-400 hover:bg-white/50'}`}
             >
-              <AlertTriangle size={16} />
-              المنطقة الخطرة
+              <AlertTriangle size={14} />
+              تصفير
             </button>
           </div>
 
@@ -419,10 +485,6 @@ const MediTrack = () => {
                     <span className="bg-slate-100 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0">2</span>
                     <p>المحاضرات التي تنتظر موعد مراجعتها ستجدها في قسم <strong>"مراجعات قادمة"</strong> بالأسفل.</p>
                   </div>
-                  <div className="flex gap-3">
-                    <span className="bg-slate-100 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0">3</span>
-                    <p>الدورة الكاملة للمحاضرة: مراجعة بعد (يوم) ← (يومين) ← (4 أيام) ← (أسبوع). ثم تكتمل.</p>
-                  </div>
                 </div>
               </div>
             )}
@@ -431,7 +493,7 @@ const MediTrack = () => {
             {settingsTab === 'config' && (
               <form onSubmit={handleSaveConfig} className="space-y-4">
                 <div className="text-sm text-slate-500 mb-2 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-                  💡 <strong>نصيحة:</strong> حدد هنا إجمالي المحاضرات المتاحة حالياً. يمكنك زيادة هذا الرقم في أي وقت عندما تنزل محاضرات جديدة.
+                  💡 <strong>نصيحة:</strong> حدد هنا إجمالي المحاضرات المتاحة حالياً.
                 </div>
                 {Object.keys(SUBJECTS).map(subj => (
                   <div key={subj} className="flex items-center gap-3">
@@ -458,9 +520,6 @@ const MediTrack = () => {
                     <FastForward size={18} />
                     زر الطوارئ (تسريع)
                   </h3>
-                  <p className="text-xs text-amber-700 mb-3">
-                    استخدم هذا الزر إذا كنت قد ذاكرت أول 5 محاضرات بالفعل وتريد مراجعتهم فوراً (سيظهرون في جدول اليوم).
-                  </p>
                   <button 
                     type="button"
                     onClick={markFirstFiveAsStudied}
@@ -472,11 +531,64 @@ const MediTrack = () => {
               </form>
             )}
 
-            {/* Tab 3: Danger Zone */}
+            {/* Tab 3: Manage Progress (NEW) */}
+            {settingsTab === 'manage' && (
+               <div className="space-y-4">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                     {Object.keys(SUBJECTS).map(subj => (
+                        <button
+                           key={subj}
+                           onClick={() => setSelectedManageSubject(subj)}
+                           className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition ${selectedManageSubject === subj ? SUBJECTS[subj].color : 'bg-slate-100 text-slate-400'}`}
+                        >
+                           {subj}
+                        </button>
+                     ))}
+                  </div>
+
+                  <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+                     {getManageLectures().length === 0 ? (
+                        <p className="text-center text-slate-400 py-8 text-sm">لا توجد محاضرات في هذه المادة بعد.</p>
+                     ) : (
+                        getManageLectures().map(lecture => (
+                           <div key={lecture.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div className="flex flex-col">
+                                 <span className="font-bold text-slate-700 text-sm">محاضرة {lecture.number}</span>
+                                 <span className="text-[10px] text-slate-400">
+                                    {lecture.stage === 0 ? 'جديد (0)' : lecture.stage >= 5 ? 'مكتمل ✅' : `مرحلة ${lecture.stage} (التالي: ${formatDate(lecture.nextReview)})`}
+                                 </span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-white rounded-lg border p-1 shadow-sm">
+                                 <button 
+                                    onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 transition"
+                                 >
+                                    <Minus size={14} />
+                                 </button>
+                                 <span className="w-6 text-center font-bold text-sm text-blue-600">{lecture.stage}</span>
+                                 <button 
+                                    onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.min(5, lecture.stage + 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-slate-100 hover:bg-green-50 text-slate-500 hover:text-green-500 transition"
+                                 >
+                                    <Plus size={14} />
+                                 </button>
+                              </div>
+                           </div>
+                        ))
+                     )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center bg-blue-50 p-2 rounded">
+                     ⚠️ تغيير المرحلة سيقوم بتحديث موعد المراجعة القادمة تلقائياً ليكون بعد الفاصل الزمني المحدد من "الآن".
+                  </p>
+               </div>
+            )}
+
+            {/* Tab 4: Danger Zone */}
             {settingsTab === 'danger' && (
               <div className="space-y-4">
                 <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-red-800 text-sm">
-                  ⚠️ <strong>تحذير:</strong> هذه الأزرار ستمسح سجل مذاكرتك للمادة وتعيد العداد للصفر. استخدمها فقط إذا أردت بدء المادة من جديد.
+                  ⚠️ <strong>تحذير:</strong> هذه الأزرار ستمسح سجل مذاكرتك للمادة وتعيد العداد للصفر.
                 </div>
                 
                 {Object.keys(SUBJECTS).map(subj => (
@@ -520,7 +632,7 @@ const MediTrack = () => {
              <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-blue-500 hover:bg-blue-50 transition" title="شرح النظام">
               <Info size={20} />
             </button>
-            <button onClick={() => { setShowSettings(true); setSettingsTab('config'); }} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-slate-400 hover:text-slate-600 transition" title="الإعدادات">
+            <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-slate-400 hover:text-slate-600 transition" title="الإعدادات">
               <Settings size={20} />
             </button>
             <button onClick={handleLogout} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-red-400 hover:text-red-600 transition" title="تسجيل الخروج">
