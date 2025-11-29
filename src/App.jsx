@@ -356,11 +356,11 @@ const MediTrack = () => {
         </div>
       </nav>
 
-      {/* Main Grid Content */}
-      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Grid Content - 4 Columns Layout */}
+      <main className="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* RIGHT COLUMN: Timer & Info (3 Cols) */}
-        <aside className="lg:col-span-3 space-y-6">
+        {/* COLUMN 1 (Right): Timer & Info (3/12) */}
+        <aside className="lg:col-span-3 space-y-4">
           {/* Timer Widget */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className={`p-4 text-center text-white transition-colors duration-300 ${timerMode === 'focus' ? 'bg-slate-800' : 'bg-emerald-600'}`}>
@@ -380,7 +380,7 @@ const MediTrack = () => {
             </div>
           </div>
 
-          {/* Stats Summary (Simplified) */}
+          {/* Stats Summary */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <h3 className="font-bold text-sm text-slate-700 mb-3 border-b pb-2">ملخص المهام</h3>
             <div className="space-y-2 text-sm">
@@ -400,66 +400,63 @@ const MediTrack = () => {
           </div>
         </aside>
 
-        {/* MIDDLE COLUMN: Work Area (5 Cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Section: Due Reviews */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                <BrainCircuit size={18} className="text-amber-500" /> مراجعات مستحقة
+        {/* COLUMN 2: Due Reviews (3/12) */}
+        <div className="lg:col-span-3 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                <BrainCircuit size={18} className="text-amber-500" /> مراجعات اليوم
               </h2>
               {reviews.length > 0 && <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{reviews.length}</span>}
             </div>
 
-            {reviews.length === 0 ? (
-               <div className="bg-white border border-gray-200 border-dashed rounded-lg p-6 text-center">
-                 <div className="text-green-500 mb-2 flex justify-center"><CheckCircle size={24} /></div>
-                 <p className="text-sm text-slate-500">ممتاز! لا توجد مراجعات متراكمة.</p>
-               </div>
-            ) : (
-              <div className="space-y-2">
-                {reviews.map(r => (
+            <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
+              {reviews.length === 0 ? (
+                 <div className="bg-white border border-gray-200 border-dashed rounded-lg p-6 text-center">
+                   <div className="text-green-500 mb-2 flex justify-center"><CheckCircle size={24} /></div>
+                   <p className="text-sm text-slate-500">ممتاز! لا توجد مراجعات.</p>
+                 </div>
+              ) : (
+                reviews.map(r => (
                   <div key={r.id} className="bg-white p-3 rounded-lg border-r-4 border-amber-400 border border-gray-200 shadow-sm flex justify-between items-center group hover:shadow-md transition">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
-                        <span className="font-bold text-sm">محاضرة {r.number}</span>
+                        <span className="font-bold text-sm">Lec {r.number}</span>
                       </div>
-                      <div className="text-xs text-slate-400">تكرار رقم {r.stage} (فاصل {INTERVALS[r.stage-1]} أيام)</div>
+                      <div className="text-xs text-slate-400">تكرار {r.stage}</div>
                     </div>
                     <button onClick={() => updateLectureStatus(r.id, r.subject, r.number, r.stage)} className="text-slate-300 hover:text-green-600 p-1">
                       <CheckCircle size={24} />
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                ))
+              )}
+            </div>
+        </div>
 
-          {/* Section: New Lectures */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+        {/* COLUMN 3: New Lectures (3/12) - Moved Here */}
+        <div className="lg:col-span-3 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
                 <BookOpen size={18} className="text-blue-500" /> محاضرات جديدة
               </h2>
+              {news.length > 0 && <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">{news.length}</span>}
             </div>
             
-            <div className="grid grid-cols-1 gap-2">
+            <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
               {news.length === 0 ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center text-sm text-slate-400">
-                  {config ? "انتهى الجديد! قم بزيادة العدد من الإعدادات." : "اضبط المنهج من الإعدادات ⚙️"}
+                  {config ? "انتهى الجديد!" : "اضبط المنهج ⚙️"}
                 </div>
               ) : (
                 news.map(n => (
-                  <div key={n.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                  <div key={n.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm hover:shadow-md transition">
                      <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
                           {n.subject}
                         </div>
                         <div>
                           <p className="font-bold text-sm text-slate-700">Lec {n.number}</p>
-                          <p className="text-[10px] text-slate-400">لم تذاكر بعد</p>
                         </div>
                      </div>
                      <button onClick={() => updateLectureStatus(n.id, n.subject, n.number, 0)} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded hover:bg-blue-100 transition">
@@ -469,11 +466,10 @@ const MediTrack = () => {
                 ))
               )}
             </div>
-          </div>
         </div>
 
-        {/* LEFT COLUMN: Upcoming Schedule (4 Cols) */}
-        <div className="lg:col-span-4">
+        {/* COLUMN 4 (Left): Upcoming Schedule (3/12) */}
+        <div className="lg:col-span-3">
            <div className="bg-slate-50 rounded-lg border border-slate-200 h-full flex flex-col">
               <div className="p-4 border-b border-slate-200 bg-white rounded-t-lg">
                 <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
@@ -482,7 +478,7 @@ const MediTrack = () => {
               </div>
               <div className="p-4 overflow-y-auto max-h-[500px] flex-1">
                 {upcoming.length === 0 ? (
-                   <p className="text-center text-xs text-slate-400 mt-10">الجدول فارغ حالياً.</p>
+                   <p className="text-center text-xs text-slate-400 mt-10">الجدول فارغ.</p>
                 ) : (
                    <div className="space-y-3">
                      {upcoming.map(u => (
