@@ -37,7 +37,9 @@ import {
   Minus,
   LayoutList,
   Target,
-  GripHorizontal
+  GripHorizontal,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -57,11 +59,11 @@ const appId = 'meditrack-v1';
 
 // --- Constants ---
 const SUBJECTS = {
-  TSF: { name: 'TSF', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600' },
-  CBG: { name: 'CBG', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600' },
-  BIO: { name: 'BIO', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600' },
-  ANA: { name: 'ANA', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600' },
-  PMD: { name: 'PMD', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600' }
+  TSF: { name: 'TSF', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
+  CBG: { name: 'CBG', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
+  BIO: { name: 'BIO', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
+  ANA: { name: 'ANA', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
+  PMD: { name: 'PMD', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' }
 };
 
 const INTERVALS = [1, 2, 4, 7];
@@ -81,11 +83,6 @@ const MediTrack = () => {
   const [settingsTab, setSettingsTab] = useState('config');
   const [tempConfig, setTempConfig] = useState({ TSF: 0, CBG: 0, BIO: 0, ANA: 0, PMD: 0 });
   const [selectedManageSubject, setSelectedManageSubject] = useState('ANA');
-
-  // Timer State
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerMode, setTimerMode] = useState('focus');
 
   // --- Auth Logic ---
   useEffect(() => {
@@ -212,8 +209,6 @@ const MediTrack = () => {
     
     // If completed or updated, remove from focus
     setFocusedTask(null);
-    setTimerActive(false);
-    setTimeLeft(25*60);
   };
 
   const manualStageUpdate = async (subject, number, newStage) => {
@@ -246,7 +241,7 @@ const MediTrack = () => {
   };
 
   const handleDragOver = (e) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
   };
 
@@ -256,9 +251,6 @@ const MediTrack = () => {
     if (taskData) {
       const task = JSON.parse(taskData);
       setFocusedTask(task);
-      setTimerActive(false);
-      setTimeLeft(25 * 60);
-      setTimerMode('focus');
     }
   };
 
@@ -300,20 +292,6 @@ const MediTrack = () => {
      return list;
   };
 
-  // --- Timer ---
-  useEffect(() => {
-    let int = null;
-    if (timerActive && timeLeft > 0) {
-      int = setInterval(() => setTimeLeft(p => p - 1), 1000);
-    } else if (timeLeft === 0) {
-      setTimerActive(false);
-      setTimerMode(m => m === 'focus' ? 'break' : 'focus');
-      setTimeLeft(timerMode === 'focus' ? 5*60 : 25*60);
-    }
-    return () => clearInterval(int);
-  }, [timerActive, timeLeft]);
-
-  const fmtTime = (s) => `${Math.floor(s/60)}:${(s%60)<10?'0':''}${s%60}`;
   const formatDate = (isoString) => {
     if (!isoString) return '';
     if (isoString === 'COMPLETED') return 'مكتمل';
@@ -348,9 +326,63 @@ const MediTrack = () => {
   const news = getNewSuggestions();
 
   return (
-    <div className="min-h-screen bg-gray-100 text-slate-800 font-sans" dir="rtl">
+    <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* Top Nav */}
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY 🌑 */}
+      {focusedTask && (
+        <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col items-center justify-center animate-in fade-in duration-300">
+          
+          {/* Top Bar */}
+          <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start">
+             <div className="flex items-center gap-4">
+                <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[focusedTask.subject]?.darkBadge || 'bg-slate-700'}`}>
+                  {focusedTask.subject}
+                </span>
+                <span className="text-slate-400 font-mono opacity-50">FOCUS MODE</span>
+             </div>
+             <button 
+                onClick={() => setFocusedTask(null)} 
+                className="p-3 bg-slate-900/50 hover:bg-red-500/20 text-slate-400 hover:text-red-500 rounded-full transition backdrop-blur-sm"
+                title="خروج من وضع التركيز"
+             >
+               <X size={32} />
+             </button>
+          </div>
+
+          {/* Main Focus Content */}
+          <div className="flex flex-col items-center justify-center text-center max-w-2xl px-4">
+             
+             {/* Icon */}
+             <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl">
+               <BookOpen size={64} className="text-blue-400" />
+             </div>
+
+             <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
+               Lecture {focusedTask.number}
+             </h2>
+             
+             <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
+               {focusedTask.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${focusedTask.stage}`}
+             </p>
+
+             <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent mb-12"></div>
+
+             {/* Action Button */}
+             <button 
+               onClick={() => updateLectureStatus(focusedTask.id, focusedTask.subject, focusedTask.number, focusedTask.stage)}
+               className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20"
+             >
+                <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
+                <CheckCircle size={28} className="ml-3" />
+                <span>إتمام المهمة</span>
+             </button>
+             
+             <p className="mt-6 text-slate-600 text-sm">اضغط عند الانتهاء لتحديث الجدول</p>
+          </div>
+        </div>
+      )}
+
+      {/* --- NORMAL DASHBOARD UI (Background) --- */}
       <nav className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="bg-slate-900 text-white p-2 rounded-md">
@@ -358,7 +390,7 @@ const MediTrack = () => {
           </div>
           <div>
              <h1 className="font-bold text-lg text-slate-800 leading-tight">MediTrack</h1>
-             <p className="text-[10px] text-slate-500 font-medium">نظام السحب والتركيز</p>
+             <p className="text-[10px] text-slate-500 font-medium">لوحة التحكم</p>
           </div>
         </div>
         
@@ -373,65 +405,22 @@ const MediTrack = () => {
       {/* Main Grid: 3 Columns */}
       <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-80px)]">
         
-        {/* COLUMN 1: FOCUS ZONE (Drop Target) */}
+        {/* COLUMN 1: DROP ZONE (Visual Placeholder) */}
         <div 
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className={`lg:col-span-1 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-6 relative overflow-hidden ${focusedTask ? 'bg-white border-blue-500 shadow-xl scale-[1.02]' : 'bg-slate-50 border-slate-300 hover:border-blue-400 hover:bg-slate-100'}`}
+          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center cursor-pointer group"
         >
-          {focusedTask ? (
-            <div className="w-full h-full flex flex-col relative z-10">
-               <div className="flex justify-between items-start mb-8">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold text-white ${SUBJECTS[focusedTask.subject]?.badge}`}>
-                    {focusedTask.subject}
-                  </span>
-                  <button onClick={() => setFocusedTask(null)} className="text-slate-400 hover:text-red-500 transition"><X size={24}/></button>
-               </div>
-               
-               <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <h2 className="text-3xl font-black text-slate-800 mb-2">محاضرة {focusedTask.number}</h2>
-                  <p className="text-slate-500 mb-8">{focusedTask.stage === 0 ? 'مذاكرة جديدة' : `مراجعة رقم ${focusedTask.stage}`}</p>
-                  
-                  <div className={`text-7xl font-mono font-bold tracking-widest mb-8 ${timerMode === 'focus' ? 'text-slate-800' : 'text-emerald-600'}`}>
-                    {fmtTime(timeLeft)}
-                  </div>
-
-                  <div className="flex gap-4 w-full max-w-xs">
-                    <button 
-                      onClick={() => setTimerActive(!timerActive)} 
-                      className={`flex-1 py-4 rounded-xl font-bold text-lg text-white shadow-lg transition transform active:scale-95 ${timerActive ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-900 hover:bg-slate-800'}`}
-                    >
-                      {timerActive ? 'إيقاف' : 'ابدأ التركيز'}
-                    </button>
-                    <button 
-                      onClick={() => {setTimerActive(false); setTimeLeft(25*60); setTimerMode('focus')}} 
-                      className="p-4 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition shadow-sm"
-                    >
-                      <RotateCcw size={24} />
-                    </button>
-                  </div>
-               </div>
-
-               <button 
-                 onClick={() => updateLectureStatus(focusedTask.id, focusedTask.subject, focusedTask.number, focusedTask.stage)}
-                 className="mt-8 w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-600 transition flex items-center justify-center gap-2"
-               >
-                 <CheckCircle size={24} />
-                 تم الانتهاء
-               </button>
-            </div>
-          ) : (
-            <div className="text-center pointer-events-none opacity-50">
-               <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                 <Target size={48} />
-               </div>
-               <h3 className="text-xl font-bold text-slate-700 mb-2">منطقة التركيز</h3>
-               <p className="text-slate-500">اسحب أي محاضرة هنا لتبدأ المذاكرة</p>
-            </div>
-          )}
+           <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+             <Maximize2 size={40} className="text-slate-400 group-hover:text-blue-500" />
+           </div>
+           <h3 className="text-2xl font-black text-slate-700 mb-2 group-hover:text-blue-600 transition-colors">منطقة التركيز</h3>
+           <p className="text-slate-500 max-w-xs mx-auto leading-relaxed">
+             اسحب أي محاضرة هنا للانتقال لوضع <strong>الشاشة الكاملة</strong> والتركيز العميق 🧘‍♂️
+           </p>
         </div>
 
-        {/* COLUMN 2: REVIEWS (Draggable) */}
+        {/* COLUMN 2: REVIEWS */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
               <h2 className="font-bold text-slate-800 flex items-center gap-2">
@@ -440,7 +429,7 @@ const MediTrack = () => {
               <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full">{reviews.length}</span>
             </div>
             
-            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50/50">
               {reviews.length === 0 ? (
                  <div className="text-center py-10 opacity-50">
                    <CheckCircle size={40} className="mx-auto mb-2 text-green-500" />
@@ -452,11 +441,11 @@ const MediTrack = () => {
                     key={r.id}
                     draggable 
                     onDragStart={(e) => handleDragStart(e, r)}
-                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group"
+                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group select-none"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
-                        <GripHorizontal size={20} className="text-slate-300" />
+                        <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
@@ -472,7 +461,7 @@ const MediTrack = () => {
             </div>
         </div>
 
-        {/* COLUMN 3: NEW LECTURES (Draggable) */}
+        {/* COLUMN 3: NEW LECTURES */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
               <h2 className="font-bold text-slate-800 flex items-center gap-2">
@@ -481,7 +470,7 @@ const MediTrack = () => {
               <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{news.length}</span>
             </div>
             
-            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50/50">
               {news.length === 0 ? (
                 <div className="text-center py-10 opacity-50">
                   <p>انتهى الجديد! راجع الإعدادات ⚙️</p>
@@ -492,9 +481,9 @@ const MediTrack = () => {
                     key={n.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, n)}
-                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3"
+                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3 select-none"
                   >
-                     <GripHorizontal size={20} className="text-slate-300" />
+                     <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
                        {n.subject}
                      </div>
@@ -532,7 +521,7 @@ const MediTrack = () => {
                      <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
                         <li><strong>الخطوة 1:</strong> اختر محاضرة من قائمة "المراجعات" أو "الجديد".</li>
                         <li><strong>الخطوة 2:</strong> اسحبها بالماوس وارمها في المربع الكبير على اليمين (منطقة التركيز).</li>
-                        <li><strong>الخطوة 3:</strong> شغل المؤقت وابدأ المذاكرة. لما تخلص، اضغط "تم الانتهاء".</li>
+                        <li><strong>الخطوة 3:</strong> سيتحول النظام لوضع الشاشة الكاملة الداكن. ركز ثم اضغط "إتمام".</li>
                      </ul>
                   </div>
                )}
