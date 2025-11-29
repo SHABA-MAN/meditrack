@@ -99,8 +99,24 @@ const MediTrack = () => {
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
-      console.error(err);
-      setAuthError("فشل تسجيل الدخول بجوجل. تأكد من تفعيل Google Provider في Firebase Console.");
+      console.error("Google Login Error:", err);
+      
+      // تحسين رسائل الخطأ لتكون أوضح
+      let errorMessage = "فشل تسجيل الدخول بجوجل.";
+      
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = "تم إغلاق النافذة قبل اكتمال التسجيل.";
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        errorMessage = "تم إلغاء الطلب.";
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = "المتصفح منع النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.";
+      } else if (err.code === 'auth/unauthorized-domain') {
+        errorMessage = "هذا النطاق (Domain) غير مصرح له. يرجى إضافته في إعدادات Firebase (Authorized Domains).";
+      } else {
+        errorMessage += ` (${err.message})`;
+      }
+      
+      setAuthError(errorMessage);
     }
   };
 
@@ -110,7 +126,7 @@ const MediTrack = () => {
       await signInAnonymously(auth);
     } catch (err) {
       console.error(err);
-      setAuthError("فشل الدخول كزائر.");
+      setAuthError("فشل الدخول كزائر: " + err.message);
     }
   };
 
@@ -329,7 +345,7 @@ const MediTrack = () => {
           </button>
 
           {authError && (
-             <div className="mt-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
+             <div className="mt-4 p-3 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-100">
                {authError}
              </div>
           )}
