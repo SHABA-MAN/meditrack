@@ -39,7 +39,9 @@ import {
   Target,
   GripHorizontal,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -76,8 +78,12 @@ const MediTrack = () => {
   // Data State
   const [config, setConfig] = useState(null); 
   const [lectures, setLectures] = useState({});
-  const [focusedTask, setFocusedTask] = useState(null); // The task currently in the drop zone
-  const [isFocusAnimating, setIsFocusAnimating] = useState(false); // Controls the transition state
+  
+  // Focus Mode State
+  const [focusQueue, setFocusQueue] = useState([]); // Array of tasks waiting for focus
+  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
+  const [isFocusModeActive, setIsFocusModeActive] = useState(false);
+  const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -190,33 +196,44 @@ const MediTrack = () => {
   };
 
   const closeFocusMode = () => {
-    setIsFocusAnimating(false); // Start exit animation
+    setIsFocusAnimating(false);
     setTimeout(() => {
-      setFocusedTask(null); // Remove data after animation
-    }, 500); // Duration matches CSS transition
+      setIsFocusModeActive(false);
+      setFocusQueue([]);
+      setActiveTaskIndex(0);
+    }, 500); 
   };
 
-  const updateLectureStatus = async (lectureId, subject, number, currentStage) => {
-    if (!user) return;
+  const completeCurrentTask = async () => {
+    if (!user || !isFocusModeActive) return;
+    
+    const task = focusQueue[activeTaskIndex];
+    if (!task) return;
+
+    // Update Lecture Status
     const today = new Date();
-    let nextStage = currentStage + 1;
+    let nextStage = task.stage + 1;
     let nextDate = new Date(); 
     let isCompleted = false;
 
-    if (currentStage < INTERVALS.length) {
-      const interval = INTERVALS[currentStage]; 
+    if (task.stage < INTERVALS.length) {
+      const interval = INTERVALS[task.stage]; 
       nextDate.setDate(nextDate.getDate() + interval);
     } else {
       isCompleted = true; 
     }
 
     const data = {
-      id: lectureId, subject, number, stage: nextStage, lastStudied: today.toISOString(), nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(), isCompleted
+      id: task.id, subject: task.subject, number: task.number, stage: nextStage, lastStudied: today.toISOString(), nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(), isCompleted
     };
-    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
-    
-    // Close Focus Mode with animation
-    closeFocusMode();
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', task.id), data);
+
+    // Move to next task or finish
+    if (activeTaskIndex < focusQueue.length - 1) {
+      setActiveTaskIndex(prev => prev + 1);
+    } else {
+      closeFocusMode();
+    }
   };
 
   const manualStageUpdate = async (subject, number, newStage) => {
@@ -258,13 +275,36 @@ const MediTrack = () => {
     const taskData = e.dataTransfer.getData("task");
     if (taskData) {
       const task = JSON.parse(taskData);
-      setFocusedTask(task);
-      // Trigger animation after a brief delay to allow render
-      setTimeout(() => setIsFocusAnimating(true), 50);
+      // Check duplicate
+      if (focusQueue.find(t => t.id === task.id)) return;
+      
+      const newQueue = [...focusQueue, task];
+      setFocusQueue(newQueue);
+      
+      if (newQueue.length === 2) {
+        setIsFocusModeActive(true);
+        setTimeout(() => setIsFocusAnimating(true), 50);
+      }
     }
   };
 
+  const removeFromQueue = (taskId) => {
+    setFocusQueue(focusQueue.filter(t => t.id !== taskId));
+  };
+
   // --- Helpers ---
+  const getSubjectStats = (subj) => {
+    const total = parseInt(config?.[subj] || 0);
+    // Count started/done
+    let started = 0;
+    Object.values(lectures).forEach(l => {
+      if (l.subject === subj && l.stage > 0) started++;
+    });
+    // New = Total - Started
+    const newCount = Math.max(0, total - started);
+    return { total, new: newCount };
+  };
+
   const getDueReviews = () => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
@@ -334,12 +374,13 @@ const MediTrack = () => {
 
   const reviews = getDueReviews();
   const news = getNewSuggestions();
+  const currentFocusTask = focusQueue[activeTaskIndex];
 
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Smooth Transition) 🌑 */}
-      {focusedTask && (
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Queue Support) 🌑 */}
+      {isFocusModeActive && currentFocusTask && (
         <div 
           className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 ease-in-out transform ${
             isFocusAnimating 
@@ -351,10 +392,12 @@ const MediTrack = () => {
           {/* Top Bar */}
           <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-700 delay-300 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
              <div className="flex items-center gap-4">
-                <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[focusedTask.subject]?.darkBadge || 'bg-slate-700'}`}>
-                  {focusedTask.subject}
+                <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[currentFocusTask.subject]?.darkBadge || 'bg-slate-700'}`}>
+                  {currentFocusTask.subject}
                 </span>
-                <span className="text-slate-400 font-mono opacity-50">FOCUS MODE</span>
+                <span className="text-slate-400 font-mono opacity-50 text-sm">
+                  مهمة {activeTaskIndex + 1} من {focusQueue.length}
+                </span>
              </div>
              <button 
                 onClick={closeFocusMode} 
@@ -374,43 +417,73 @@ const MediTrack = () => {
              </div>
 
              <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
-               Lecture {focusedTask.number}
+               Lecture {currentFocusTask.number}
              </h2>
              
              <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
-               {focusedTask.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${focusedTask.stage}`}
+               {currentFocusTask.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${currentFocusTask.stage}`}
              </p>
 
-             <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent mb-12"></div>
+             {/* Queue Progress Bar */}
+             <div className="flex gap-2 mb-12">
+               {focusQueue.map((_, idx) => (
+                 <div key={idx} className={`h-2 w-12 rounded-full transition-colors ${idx <= activeTaskIndex ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
+               ))}
+             </div>
 
              {/* Action Button */}
              <button 
-               onClick={() => updateLectureStatus(focusedTask.id, focusedTask.subject, focusedTask.number, focusedTask.stage)}
+               onClick={completeCurrentTask}
                className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/40"
              >
                 <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
                 <CheckCircle size={28} className="ml-3" />
-                <span>إتمام المهمة</span>
+                <span>
+                  {activeTaskIndex < focusQueue.length - 1 ? 'التالي' : 'إتمام الجلسة'}
+                </span>
              </button>
-             
-             <p className="mt-6 text-slate-600 text-sm">اضغط عند الانتهاء لتحديث الجدول</p>
           </div>
         </div>
       )}
 
-      {/* --- NORMAL DASHBOARD UI (Background) --- */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-3">
+      {/* --- NORMAL DASHBOARD UI --- */}
+      
+      {/* Top Nav & Stats Bar */}
+      <nav className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        
+        {/* Logo & Welcome */}
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="bg-slate-900 text-white p-2 rounded-md">
             <BrainCircuit size={20} />
           </div>
           <div>
              <h1 className="font-bold text-lg text-slate-800 leading-tight">MediTrack</h1>
-             <p className="text-[10px] text-slate-500 font-medium">لوحة التحكم</p>
+          </div>
+        </div>
+
+        {/* 📊 SUBJECT STATS SCROLLER (STACKED) 📊 */}
+        <div className="flex-1 w-full md:w-auto overflow-x-auto no-scrollbar mx-4">
+          <div className="flex gap-3 justify-start md:justify-center">
+            {Object.keys(SUBJECTS).map(subj => {
+              const stats = getSubjectStats(subj);
+              return (
+                <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-lg p-1.5 min-w-[60px] shrink-0">
+                  <span className={`text-[10px] font-black px-2 rounded-sm mb-1 text-white ${SUBJECTS[subj].badge}`}>
+                    {subj}
+                  </span>
+                  <div className="flex items-end gap-0.5 leading-none">
+                    <span className="text-sm font-bold text-slate-800">{stats.new}</span>
+                    <span className="text-[9px] text-slate-400 font-medium">/{stats.total}</span>
+                  </div>
+                  <span className="text-[8px] text-slate-400 mt-0.5">جديد</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        {/* Controls */}
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -419,21 +492,66 @@ const MediTrack = () => {
       </nav>
 
       {/* Main Grid: 3 Columns */}
-      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-80px)]">
+      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
         
-        {/* COLUMN 1: DROP ZONE (Visual Placeholder) */}
+        {/* COLUMN 1: DROP ZONE (Queue System) */}
         <div 
-          onDragOver={handleDragOver}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
-          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center cursor-pointer group hover:scale-[1.02]"
+          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col p-6 text-center cursor-pointer group hover:scale-[1.01]"
         >
-           <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-             <Maximize2 size={40} className="text-slate-400 group-hover:text-blue-500" />
-           </div>
-           <h3 className="text-2xl font-black text-slate-700 mb-2 group-hover:text-blue-600 transition-colors">منطقة التركيز</h3>
-           <p className="text-slate-500 max-w-xs mx-auto leading-relaxed">
-             اسحب أي محاضرة هنا للانتقال لوضع <strong>الشاشة الكاملة</strong> والتركيز العميق 🧘‍♂️
-           </p>
+           {/* Placeholder if empty */}
+           {focusQueue.length === 0 && (
+             <div className="flex-1 flex flex-col items-center justify-center opacity-60">
+                <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Layers size={32} className="text-slate-400 group-hover:text-blue-500" />
+                </div>
+                <h3 className="text-xl font-black text-slate-700 mb-1">منطقة التركيز</h3>
+                <p className="text-slate-500 text-sm max-w-[200px] leading-relaxed">
+                  اسحب <strong>محاضرتين</strong> هنا لبدء جلسة الانغماس الكامل 🚀
+                </p>
+             </div>
+           )}
+
+           {/* Queue Display */}
+           {focusQueue.length > 0 && (
+             <div className="w-full flex-1 flex flex-col">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
+                  <span>طابور المذاكرة</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${focusQueue.length >= 2 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {focusQueue.length}/2
+                  </span>
+                </h3>
+                
+                <div className="space-y-2 flex-1">
+                  {focusQueue.map((task, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex justify-between items-center animate-in slide-in-from-bottom duration-300">
+                       <div className="flex items-center gap-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${SUBJECTS[task.subject]?.badge}`}>
+                            {task.subject}
+                          </span>
+                          <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
+                       </div>
+                       <button onClick={() => removeFromQueue(task.id)} className="text-slate-300 hover:text-red-500">
+                         <X size={16} />
+                       </button>
+                    </div>
+                  ))}
+                  
+                  {focusQueue.length === 1 && (
+                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-3 flex items-center justify-center text-slate-400 text-xs italic animate-pulse">
+                      + اسحب محاضرة كمان
+                    </div>
+                  )}
+                </div>
+
+                {focusQueue.length >= 2 && (
+                  <div className="mt-4 bg-green-50 text-green-700 p-3 rounded-lg text-sm font-bold animate-pulse">
+                    جاري الدخول لوضع التركيز... ⏳
+                  </div>
+                )}
+             </div>
+           )}
         </div>
 
         {/* COLUMN 2: REVIEWS */}
@@ -532,12 +650,12 @@ const MediTrack = () => {
             <div className="p-6 overflow-y-auto bg-white flex-1">
                {settingsTab === 'guide' && (
                   <div className="space-y-4 text-slate-600 text-sm">
-                     <h3 className="font-bold text-slate-800">طريقة الاستخدام الجديدة 🖱️</h3>
-                     <p>النظام الآن يعتمد على السحب والإفلات للتركيز العميق.</p>
+                     <h3 className="font-bold text-slate-800">التحديث الجديد: تحدي المحاضرتين 💪</h3>
+                     <p>عشان نضمن إنك مش بتدلع، لازم تسحب <strong>محاضرتين</strong> في منطقة التركيز عشان تقدر تبدأ.</p>
                      <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
-                        <li><strong>الخطوة 1:</strong> اختر محاضرة من قائمة "المراجعات" أو "الجديد".</li>
-                        <li><strong>الخطوة 2:</strong> اسحبها بالماوس وارمها في المربع الكبير على اليمين (منطقة التركيز).</li>
-                        <li><strong>الخطوة 3:</strong> سيتحول النظام لوضع الشاشة الكاملة الداكن. ركز ثم اضغط "إتمام".</li>
+                        <li><strong>1.</strong> اسحب المحاضرة الأولى.</li>
+                        <li><strong>2.</strong> اسحب المحاضرة الثانية.</li>
+                        <li><strong>3.</strong> النظام هيفتح وضع الشاشة الكاملة للمحاضرتين ورا بعض.</li>
                      </ul>
                   </div>
                )}
