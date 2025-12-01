@@ -19,8 +19,6 @@ import {
 } from 'firebase/firestore';
 import { 
   CheckCircle, 
-  Clock, 
-  RotateCcw, 
   BrainCircuit, 
   Settings, 
   BookOpen,
@@ -41,7 +39,9 @@ import {
   Maximize2,
   Minimize2,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  Coffee
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -80,10 +80,11 @@ const MediTrack = () => {
   const [lectures, setLectures] = useState({});
   
   // Focus Mode State
-  const [focusQueue, setFocusQueue] = useState([]); // Array of tasks waiting for focus
+  const [focusQueue, setFocusQueue] = useState([]); 
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
+  const [isFreeFocus, setIsFreeFocus] = useState(false); 
   
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -195,10 +196,17 @@ const MediTrack = () => {
     setShowSettings(false);
   };
 
+  const startFreeFocus = () => {
+    setIsFreeFocus(true);
+    setIsFocusModeActive(true);
+    setTimeout(() => setIsFocusAnimating(true), 50);
+  };
+
   const closeFocusMode = () => {
     setIsFocusAnimating(false);
     setTimeout(() => {
       setIsFocusModeActive(false);
+      setIsFreeFocus(false);
       setFocusQueue([]);
       setActiveTaskIndex(0);
     }, 500); 
@@ -207,6 +215,11 @@ const MediTrack = () => {
   const completeCurrentTask = async () => {
     if (!user || !isFocusModeActive) return;
     
+    if (isFreeFocus) {
+      closeFocusMode();
+      return;
+    }
+
     const task = focusQueue[activeTaskIndex];
     if (!task) return;
 
@@ -295,12 +308,10 @@ const MediTrack = () => {
   // --- Helpers ---
   const getSubjectStats = (subj) => {
     const total = parseInt(config?.[subj] || 0);
-    // Count started/done
     let started = 0;
     Object.values(lectures).forEach(l => {
       if (l.subject === subj && l.stage > 0) started++;
     });
-    // New = Total - Started
     const newCount = Math.max(0, total - started);
     return { total, new: newCount };
   };
@@ -379,8 +390,8 @@ const MediTrack = () => {
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Queue Support) 🌑 */}
-      {isFocusModeActive && currentFocusTask && (
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Queue & Free Mode) 🌑 */}
+      {isFocusModeActive && (
         <div 
           className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 ease-in-out transform ${
             isFocusAnimating 
@@ -392,11 +403,17 @@ const MediTrack = () => {
           {/* Top Bar */}
           <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-700 delay-300 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
              <div className="flex items-center gap-4">
-                <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[currentFocusTask.subject]?.darkBadge || 'bg-slate-700'}`}>
-                  {currentFocusTask.subject}
-                </span>
+                {isFreeFocus ? (
+                  <span className="px-4 py-2 rounded-xl text-lg font-bold shadow-lg bg-slate-800 text-white">
+                    جلسة حرة
+                  </span>
+                ) : (
+                  <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[currentFocusTask?.subject]?.darkBadge || 'bg-slate-700'}`}>
+                    {currentFocusTask?.subject}
+                  </span>
+                )}
                 <span className="text-slate-400 font-mono opacity-50 text-sm">
-                  مهمة {activeTaskIndex + 1} من {focusQueue.length}
+                  {isFreeFocus ? 'Free Focus' : `مهمة ${activeTaskIndex + 1} من ${focusQueue.length}`}
                 </span>
              </div>
              <button 
@@ -411,37 +428,61 @@ const MediTrack = () => {
           {/* Main Focus Content */}
           <div className={`flex flex-col items-center justify-center text-center max-w-2xl px-4 transition-all duration-700 delay-200 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
              
-             {/* Icon */}
-             <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
-               <BookOpen size={64} className="text-blue-400" />
-             </div>
+             {isFreeFocus ? (
+               // FREE FOCUS UI (NO TIMER)
+               <>
+                 <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
+                   <Zap size={64} className="text-amber-400" />
+                 </div>
+                 <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
+                   وضع التركيز الحر
+                 </h2>
+                 <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
+                   أنت الآن في منطقة منعزلة تماماً عن المشتتات.
+                 </p>
+                 <button 
+                   onClick={closeFocusMode} 
+                   className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-red-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 hover:bg-red-500 active:scale-95 shadow-xl shadow-red-900/20 hover:shadow-red-900/40"
+                 >
+                    <LogOut size={28} className="ml-3" />
+                    <span>إنهاء الجلسة</span>
+                 </button>
+               </>
+             ) : (
+               // TASK FOCUS UI
+               <>
+                 <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
+                   <BookOpen size={64} className="text-blue-400" />
+                 </div>
 
-             <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
-               Lecture {currentFocusTask.number}
-             </h2>
-             
-             <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
-               {currentFocusTask.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${currentFocusTask.stage}`}
-             </p>
+                 <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
+                   Lecture {currentFocusTask?.number}
+                 </h2>
+                 
+                 <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
+                   {currentFocusTask?.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${currentFocusTask?.stage}`}
+                 </p>
 
-             {/* Queue Progress Bar */}
-             <div className="flex gap-2 mb-12">
-               {focusQueue.map((_, idx) => (
-                 <div key={idx} className={`h-2 w-12 rounded-full transition-colors ${idx <= activeTaskIndex ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
-               ))}
-             </div>
+                 {/* Queue Progress Bar */}
+                 <div className="flex gap-2 mb-12">
+                   {focusQueue.map((_, idx) => (
+                     <div key={idx} className={`h-2 w-12 rounded-full transition-colors ${idx <= activeTaskIndex ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
+                   ))}
+                 </div>
 
-             {/* Action Button */}
-             <button 
-               onClick={completeCurrentTask}
-               className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/40"
-             >
-                <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
-                <CheckCircle size={28} className="ml-3" />
-                <span>
-                  {activeTaskIndex < focusQueue.length - 1 ? 'التالي' : 'إتمام الجلسة'}
-                </span>
-             </button>
+                 {/* Action Button */}
+                 <button 
+                   onClick={completeCurrentTask}
+                   className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/40"
+                 >
+                    <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
+                    <CheckCircle size={28} className="ml-3" />
+                    <span>
+                      {activeTaskIndex < focusQueue.length - 1 ? 'التالي' : 'إتمام الجلسة'}
+                    </span>
+                 </button>
+               </>
+             )}
           </div>
         </div>
       )}
@@ -451,7 +492,6 @@ const MediTrack = () => {
       {/* Top Nav & Stats Bar */}
       <nav className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
         
-        {/* Logo & Welcome */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="bg-slate-900 text-white p-2 rounded-md">
             <BrainCircuit size={20} />
@@ -482,7 +522,6 @@ const MediTrack = () => {
           </div>
         </div>
         
-        {/* Controls */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
@@ -502,14 +541,22 @@ const MediTrack = () => {
         >
            {/* Placeholder if empty */}
            {focusQueue.length === 0 && (
-             <div className="flex-1 flex flex-col items-center justify-center opacity-60">
+             <div className="flex-1 flex flex-col items-center justify-center opacity-60 w-full">
                 <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Layers size={32} className="text-slate-400 group-hover:text-blue-500" />
                 </div>
                 <h3 className="text-xl font-black text-slate-700 mb-1">منطقة التركيز</h3>
-                <p className="text-slate-500 text-sm max-w-[200px] leading-relaxed">
+                <p className="text-slate-500 text-sm max-w-[200px] leading-relaxed mb-6">
                   اسحب <strong>محاضرتين</strong> هنا لبدء جلسة الانغماس الكامل 🚀
                 </p>
+                
+                <button 
+                  onClick={startFreeFocus}
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-full text-xs font-bold text-slate-500 hover:bg-slate-800 hover:text-white hover:border-slate-800 transition flex items-center gap-2"
+                >
+                  <Coffee size={14} />
+                  جلسة حرة (بدون مواد)
+                </button>
              </div>
            )}
 
