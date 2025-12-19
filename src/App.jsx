@@ -34,14 +34,14 @@ import {
   Plus,
   Minus,
   LayoutList,
-  Target,
   GripHorizontal,
   Maximize2,
-  Minimize2,
   Layers,
-  ArrowRight,
   Zap,
-  Coffee
+  Coffee,
+  Edit2,
+  MoreVertical,
+  Flag
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -81,7 +81,6 @@ const MediTrack = () => {
   
   // Focus Mode State
   const [focusQueue, setFocusQueue] = useState([]); 
-  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false); 
@@ -91,6 +90,9 @@ const MediTrack = () => {
   const [settingsTab, setSettingsTab] = useState('config');
   const [tempConfig, setTempConfig] = useState({ TSF: 0, CBG: 0, BIO: 0, ANA: 0, PMD: 0 });
   const [selectedManageSubject, setSelectedManageSubject] = useState('ANA');
+  
+  // Task Editing State
+  const [editingTask, setEditingTask] = useState(null); // The task currently being edited (modal)
 
   // --- Auth Logic ---
   useEffect(() => {
@@ -160,6 +162,33 @@ const MediTrack = () => {
     setShowSettings(false);
   };
 
+  const handleSaveTaskDetails = async (e) => {
+    e.preventDefault();
+    if (!user || !editingTask) return;
+    
+    // Create reference to doc (even if it doesn't exist yet, we can merge)
+    // But usually lectures exist if they are in lists. If new suggestion, we might need to create it.
+    // For simplicity, we just set/merge data.
+    
+    const data = {
+      id: editingTask.id,
+      subject: editingTask.subject,
+      number: editingTask.number,
+      title: editingTask.title || '',
+      description: editingTask.description || '',
+      difficulty: editingTask.difficulty || 'normal',
+      // Preserve existing stage if not present in edit
+      stage: editingTask.stage !== undefined ? editingTask.stage : 0, 
+      // Preserve nextReview if not present
+      nextReview: editingTask.nextReview !== undefined ? editingTask.nextReview : null
+    };
+
+    // If lecture doesn't exist in DB (e.g. fresh "New"), we create it with basic stats
+    // We use setDoc with merge to not overwrite progress if it exists behind scenes
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', editingTask.id), data, { merge: true });
+    setEditingTask(null);
+  };
+
   const resetSubjectProgress = async (subjCode) => {
     if (!confirm(`تحذير: هل أنت متأكد من تصفير مادة ${subjCode}؟`)) return;
     const batch = writeBatch(db);
@@ -208,21 +237,12 @@ const MediTrack = () => {
       setIsFocusModeActive(false);
       setIsFreeFocus(false);
       setFocusQueue([]);
-      setActiveTaskIndex(0);
     }, 500); 
   };
 
-  const completeCurrentTask = async () => {
-    if (!user || !isFocusModeActive) return;
+  const completeTask = async (task) => {
+    if (!user) return;
     
-    if (isFreeFocus) {
-      closeFocusMode();
-      return;
-    }
-
-    const task = focusQueue[activeTaskIndex];
-    if (!task) return;
-
     // Update Lecture Status
     const today = new Date();
     let nextStage = task.stage + 1;
@@ -239,12 +259,14 @@ const MediTrack = () => {
     const data = {
       id: task.id, subject: task.subject, number: task.number, stage: nextStage, lastStudied: today.toISOString(), nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(), isCompleted
     };
-    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', task.id), data);
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', task.id), data, { merge: true });
 
-    // Move to next task or finish
-    if (activeTaskIndex < focusQueue.length - 1) {
-      setActiveTaskIndex(prev => prev + 1);
-    } else {
+    // Remove from local queue
+    const newQueue = focusQueue.filter(t => t.id !== task.id);
+    setFocusQueue(newQueue);
+
+    // If queue empty, close
+    if (newQueue.length === 0) {
       closeFocusMode();
     }
   };
@@ -269,7 +291,7 @@ const MediTrack = () => {
       nextReviewVal = nextDate.toISOString();
     }
     const data = { id: lectureId, subject, number, stage: newStage, lastStudied: today.toISOString(), nextReview: nextReviewVal, isCompleted };
-    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data);
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data, {merge: true});
   };
 
   // --- Drag & Drop Logic ---
@@ -332,8 +354,18 @@ const MediTrack = () => {
       const total = parseInt(config[subj]) || 0;
       for (let i = 1; i <= total; i++) {
         const id = `${subj}_${i}`;
+        // If lecture exists use its data, otherwise mock it for suggestion
         if (!lectures[id] || lectures[id].stage === 0) {
-          suggestions.push({ id, subject: subj, number: i, stage: 0 });
+          const existing = lectures[id] || {};
+          suggestions.push({ 
+            id, 
+            subject: subj, 
+            number: i, 
+            stage: 0,
+            title: existing.title || '',
+            description: existing.description || '',
+            difficulty: existing.difficulty || 'normal'
+          });
           break;
         }
       }
@@ -348,7 +380,15 @@ const MediTrack = () => {
      for(let i=1; i<=total; i++) {
         const id = `${selectedManageSubject}_${i}`;
         const lecture = lectures[id];
-        list.push({ id, number: i, stage: lecture ? lecture.stage : 0, nextReview: lecture ? lecture.nextReview : null });
+        list.push({ 
+          id, 
+          number: i, 
+          stage: lecture ? lecture.stage : 0, 
+          nextReview: lecture ? lecture.nextReview : null,
+          title: lecture?.title,
+          description: lecture?.description,
+          difficulty: lecture?.difficulty
+        });
      }
      return list;
   };
@@ -357,6 +397,14 @@ const MediTrack = () => {
     if (!isoString) return '';
     if (isoString === 'COMPLETED') return 'مكتمل';
     return new Date(isoString).toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
+  // Helper to open edit modal
+  const openEditModal = (task) => {
+    setEditingTask({
+      ...task,
+      difficulty: task.difficulty || 'normal'
+    });
   };
 
   if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-slate-600 font-bold">جاري تحميل النظام...</div>;
@@ -385,105 +433,171 @@ const MediTrack = () => {
 
   const reviews = getDueReviews();
   const news = getNewSuggestions();
-  const currentFocusTask = focusQueue[activeTaskIndex];
 
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (With Queue & Free Mode) 🌑 */}
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (SPLIT SCREEN) 🌑 */}
       {isFocusModeActive && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 ease-in-out transform ${
+          className={`fixed inset-0 z-50 flex flex-col transition-all duration-500 ease-in-out transform ${
             isFocusAnimating 
               ? 'bg-slate-950 translate-x-0' 
               : 'bg-slate-950 -translate-x-full'
           }`}
         >
-          
-          {/* Top Bar */}
-          <div className={`absolute top-0 left-0 w-full p-6 flex justify-between items-start transition-all duration-700 delay-300 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
-             <div className="flex items-center gap-4">
-                {isFreeFocus ? (
-                  <span className="px-4 py-2 rounded-xl text-lg font-bold shadow-lg bg-slate-800 text-white">
-                    جلسة حرة
-                  </span>
-                ) : (
-                  <span className={`px-4 py-2 rounded-xl text-lg font-bold shadow-lg shadow-black/50 ${SUBJECTS[currentFocusTask?.subject]?.darkBadge || 'bg-slate-700'}`}>
-                    {currentFocusTask?.subject}
-                  </span>
-                )}
-                <span className="text-slate-400 font-mono opacity-50 text-sm">
-                  {isFreeFocus ? 'Free Focus' : `مهمة ${activeTaskIndex + 1} من ${focusQueue.length}`}
-                </span>
+          {/* Top Bar (Minimal) */}
+          <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 pointer-events-none">
+             <div className="pointer-events-auto">
+                <button 
+                  onClick={closeFocusMode} 
+                  className="p-2 text-slate-500 hover:text-white transition"
+                >
+                  <X size={20} />
+                </button>
              </div>
-             <button 
-                onClick={closeFocusMode} 
-                className="p-3 bg-slate-900/50 hover:bg-red-500/20 text-slate-400 hover:text-red-500 rounded-full transition backdrop-blur-sm"
-                title="خروج من وضع التركيز"
-             >
-               <X size={32} />
-             </button>
           </div>
 
-          {/* Main Focus Content */}
-          <div className={`flex flex-col items-center justify-center text-center max-w-2xl px-4 transition-all duration-700 delay-200 ${isFocusAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
-             
+          <div className="flex-1 flex h-full">
              {isFreeFocus ? (
-               // FREE FOCUS UI (NO TIMER)
-               <>
-                 <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
-                   <Zap size={64} className="text-amber-400" />
-                 </div>
-                 <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
-                   وضع التركيز الحر
-                 </h2>
-                 <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
-                   أنت الآن في منطقة منعزلة تماماً عن المشتتات.
-                 </p>
+               // FREE FOCUS UI (Minimal)
+               <div className="w-full h-full flex flex-col items-center justify-center text-white p-8">
+                 <Zap size={48} className="text-amber-500 mb-6 opacity-80" />
+                 <h2 className="text-2xl font-light tracking-wide mb-8">جلسة تركيز حرة</h2>
                  <button 
                    onClick={closeFocusMode} 
-                   className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-red-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 hover:bg-red-500 active:scale-95 shadow-xl shadow-red-900/20 hover:shadow-red-900/40"
+                   className="px-6 py-2 border border-slate-700 hover:bg-slate-800 rounded-full text-sm text-slate-400 hover:text-white transition"
                  >
-                    <LogOut size={28} className="ml-3" />
-                    <span>إنهاء الجلسة</span>
+                    إنهاء
                  </button>
-               </>
+               </div>
              ) : (
-               // TASK FOCUS UI
+               // SPLIT SCREEN TASKS
                <>
-                 <div className="mb-8 p-6 bg-slate-900/50 rounded-full border border-slate-800 shadow-2xl animate-pulse">
-                   <BookOpen size={64} className="text-blue-400" />
-                 </div>
+                 {focusQueue.map((task, idx) => (
+                   <div 
+                     key={task.id} 
+                     className={`h-full flex flex-col items-center justify-center p-8 relative transition-all duration-500
+                       ${focusQueue.length === 2 ? 'w-1/2' : 'w-full'}
+                       ${idx === 0 && focusQueue.length === 2 ? 'border-l border-slate-800' : ''}
+                     `}
+                   >
+                      {/* Task Content */}
+                      <div className="text-center">
+                        {/* Subject Badge */}
+                        <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                          {task.subject}
+                        </div>
 
-                 <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-4 text-white drop-shadow-2xl">
-                   Lecture {currentFocusTask?.number}
-                 </h2>
-                 
-                 <p className="text-xl md:text-2xl text-slate-400 mb-12 font-light">
-                   {currentFocusTask?.stage === 0 ? '✨ مذاكرة جديدة لأول مرة' : `🔄 مراجعة رقم ${currentFocusTask?.stage}`}
-                 </p>
+                        {/* Title & Number */}
+                        <h2 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
+                          Lec {task.number}
+                        </h2>
+                        {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
+                        
+                        {/* Meta Info */}
+                        <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8">
+                           <span>{task.stage === 0 ? 'جديد' : `مراجعة ${task.stage}`}</span>
+                           {task.difficulty && (
+                             <span className={`px-1.5 py-0.5 rounded border ${task.difficulty === 'hard' ? 'border-red-900 text-red-400' : task.difficulty === 'easy' ? 'border-green-900 text-green-400' : 'border-slate-800'}`}>
+                               {task.difficulty === 'hard' ? 'صعب' : task.difficulty === 'easy' ? 'سهل' : 'عادي'}
+                             </span>
+                           )}
+                        </div>
 
-                 {/* Queue Progress Bar */}
-                 <div className="flex gap-2 mb-12">
-                   {focusQueue.map((_, idx) => (
-                     <div key={idx} className={`h-2 w-12 rounded-full transition-colors ${idx <= activeTaskIndex ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
-                   ))}
-                 </div>
+                        {/* Description (Minimal) */}
+                        {task.description && (
+                          <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light">
+                            {task.description}
+                          </p>
+                        )}
 
-                 {/* Action Button */}
-                 <button 
-                   onClick={completeCurrentTask}
-                   className="group relative inline-flex items-center justify-center px-8 py-5 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/40"
-                 >
-                    <div className="absolute -inset-3 rounded-2xl bg-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-lg"></div>
-                    <CheckCircle size={28} className="ml-3" />
-                    <span>
-                      {activeTaskIndex < focusQueue.length - 1 ? 'التالي' : 'إتمام الجلسة'}
-                    </span>
-                 </button>
+                        {/* Minimal Done Button */}
+                        <button 
+                          onClick={() => completeTask(task)}
+                          className="w-12 h-12 rounded-full border border-slate-700 bg-slate-900 hover:bg-emerald-900 hover:border-emerald-700 text-slate-500 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 mx-auto group"
+                          title="إتمام"
+                        >
+                           <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
+                        </button>
+                      </div>
+                   </div>
+                 ))}
                </>
              )}
           </div>
+        </div>
+      )}
+
+      {/* --- EDIT MODAL --- */}
+      {editingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                   <Edit2 size={16} className="text-blue-500" /> تعديل المحاضرة
+                 </h3>
+                 <button onClick={() => setEditingTask(null)} className="text-slate-400 hover:text-red-500"><X size={18} /></button>
+              </div>
+              <form onSubmit={handleSaveTaskDetails} className="p-4 space-y-4">
+                 <div className="flex items-center gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${SUBJECTS[editingTask.subject]?.badge}`}>{editingTask.subject}</span>
+                    <span className="font-bold text-sm text-slate-700">Lecture {editingTask.number}</span>
+                 </div>
+
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">اسم المحاضرة (اختياري)</label>
+                    <input 
+                      type="text" 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                      placeholder="مثلاً: Intro to Bones"
+                      value={editingTask.title || ''}
+                      onChange={e => setEditingTask({...editingTask, title: e.target.value})}
+                    />
+                 </div>
+
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">وصف / ملاحظات</label>
+                    <textarea 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none h-20 resize-none"
+                      placeholder="ملاحظات سريعة..."
+                      value={editingTask.description || ''}
+                      onChange={e => setEditingTask({...editingTask, description: e.target.value})}
+                    />
+                 </div>
+
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">مستوى الصعوبة</label>
+                    <div className="flex gap-2">
+                       <button 
+                         type="button"
+                         onClick={() => setEditingTask({...editingTask, difficulty: 'easy'})}
+                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'easy' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                       >
+                         سهلة 🙂
+                       </button>
+                       <button 
+                         type="button"
+                         onClick={() => setEditingTask({...editingTask, difficulty: 'normal'})}
+                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'normal' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                       >
+                         عادية 😐
+                       </button>
+                       <button 
+                         type="button"
+                         onClick={() => setEditingTask({...editingTask, difficulty: 'hard'})}
+                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'hard' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                       >
+                         صعبة 🥵
+                       </button>
+                    </div>
+                 </div>
+
+                 <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-slate-800 transition mt-2">
+                   حفظ التعديلات
+                 </button>
+              </form>
+           </div>
         </div>
       )}
 
@@ -577,7 +691,10 @@ const MediTrack = () => {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
                           </span>
-                          <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
+                          <div className="flex flex-col items-start">
+                             <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
+                             {task.title && <span className="text-[10px] text-slate-400">{task.title}</span>}
+                          </div>
                        </div>
                        <button onClick={() => removeFromQueue(task.id)} className="text-slate-300 hover:text-red-500">
                          <X size={16} />
@@ -622,8 +739,16 @@ const MediTrack = () => {
                     key={r.id}
                     draggable 
                     onDragStart={(e) => handleDragStart(e, r)}
-                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group select-none"
+                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group select-none relative"
                   >
+                    <button 
+                      onClick={() => openEditModal(r)}
+                      className="absolute top-2 left-2 p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition opacity-0 group-hover:opacity-100"
+                      title="تعديل التفاصيل"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
                         <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
@@ -632,7 +757,11 @@ const MediTrack = () => {
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
                             <span className="font-bold text-slate-800">Lec {r.number}</span>
                           </div>
-                          <p className="text-xs text-slate-400">تكرار رقم {r.stage}</p>
+                          {r.title && <p className="text-xs font-medium text-slate-600 mb-0.5">{r.title}</p>}
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                             <span>تكرار {r.stage}</span>
+                             {r.difficulty === 'hard' && <span className="text-red-400 font-bold">• صعب</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -662,15 +791,27 @@ const MediTrack = () => {
                     key={n.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, n)}
-                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3 select-none"
+                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3 select-none relative"
                   >
+                     <button 
+                        onClick={() => openEditModal(n)}
+                        className="absolute top-2 left-2 p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition opacity-0 group-hover:opacity-100"
+                        title="تعديل التفاصيل"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+
                      <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
                        {n.subject}
                      </div>
                      <div>
-                       <p className="font-bold text-slate-700">Lecture {n.number}</p>
-                       <p className="text-xs text-slate-400">جديد تماماً</p>
+                       <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-700">Lec {n.number}</p>
+                          {n.difficulty === 'hard' && <Flag size={10} className="text-red-500 fill-current" />}
+                       </div>
+                       {n.title && <p className="text-xs font-medium text-slate-600">{n.title}</p>}
+                       {!n.title && <p className="text-xs text-slate-400">جديد تماماً</p>}
                      </div>
                   </div>
                 ))
@@ -702,7 +843,7 @@ const MediTrack = () => {
                      <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
                         <li><strong>1.</strong> اسحب المحاضرة الأولى.</li>
                         <li><strong>2.</strong> اسحب المحاضرة الثانية.</li>
-                        <li><strong>3.</strong> النظام هيفتح وضع الشاشة الكاملة للمحاضرتين ورا بعض.</li>
+                        <li><strong>3.</strong> النظام هيفتح وضع الشاشة الكاملة (Split Screen) للاثنين معاً.</li>
                      </ul>
                   </div>
                )}
@@ -735,9 +876,14 @@ const MediTrack = () => {
                      </div>
                      <div className="space-y-1 max-h-[300px] overflow-y-auto">
                         {getManageLectures().length === 0 ? <p className="text-center text-slate-400 text-xs py-4">لا توجد محاضرات.</p> : getManageLectures().map(lecture => (
-                           <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-md hover:bg-slate-50">
-                              <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>
+                           <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-md hover:bg-slate-50 group">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>
+                                {lecture.title && <span className="text-[10px] text-blue-600">{lecture.title}</span>}
+                              </div>
                               <div className="flex items-center gap-2">
+                                 <button onClick={() => openEditModal(lecture)} className="p-1 text-slate-300 hover:text-blue-500"><Edit2 size={14}/></button>
+                                 <div className="h-4 w-px bg-slate-200 mx-1"></div>
                                  <span className="text-[10px] text-slate-400 mr-2">{lecture.stage >= 5 ? 'Done' : `Stage ${lecture.stage}`}</span>
                                  <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))} className="p-1 bg-gray-100 rounded hover:bg-gray-200"><Minus size={12}/></button>
                                  <span className="w-4 text-center text-xs font-bold">{lecture.stage}</span>
