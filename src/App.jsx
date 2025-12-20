@@ -92,7 +92,7 @@ const MediTrack = () => {
   const [selectedManageSubject, setSelectedManageSubject] = useState('ANA');
   
   // Task Editing State
-  const [editingTask, setEditingTask] = useState(null); // The task currently being edited (modal)
+  const [editingTask, setEditingTask] = useState(null); 
 
   // --- Auth Logic ---
   useEffect(() => {
@@ -166,10 +166,6 @@ const MediTrack = () => {
     e.preventDefault();
     if (!user || !editingTask) return;
     
-    // Create reference to doc (even if it doesn't exist yet, we can merge)
-    // But usually lectures exist if they are in lists. If new suggestion, we might need to create it.
-    // For simplicity, we just set/merge data.
-    
     const data = {
       id: editingTask.id,
       subject: editingTask.subject,
@@ -177,14 +173,10 @@ const MediTrack = () => {
       title: editingTask.title || '',
       description: editingTask.description || '',
       difficulty: editingTask.difficulty || 'normal',
-      // Preserve existing stage if not present in edit
       stage: editingTask.stage !== undefined ? editingTask.stage : 0, 
-      // Preserve nextReview if not present
       nextReview: editingTask.nextReview !== undefined ? editingTask.nextReview : null
     };
 
-    // If lecture doesn't exist in DB (e.g. fresh "New"), we create it with basic stats
-    // We use setDoc with merge to not overwrite progress if it exists behind scenes
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', editingTask.id), data, { merge: true });
     setEditingTask(null);
   };
@@ -243,7 +235,6 @@ const MediTrack = () => {
   const completeTask = async (task) => {
     if (!user) return;
     
-    // Update Lecture Status
     const today = new Date();
     let nextStage = task.stage + 1;
     let nextDate = new Date(); 
@@ -261,11 +252,9 @@ const MediTrack = () => {
     };
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', task.id), data, { merge: true });
 
-    // Remove from local queue
     const newQueue = focusQueue.filter(t => t.id !== task.id);
     setFocusQueue(newQueue);
 
-    // If queue empty, close
     if (newQueue.length === 0) {
       closeFocusMode();
     }
@@ -310,7 +299,6 @@ const MediTrack = () => {
     const taskData = e.dataTransfer.getData("task");
     if (taskData) {
       const task = JSON.parse(taskData);
-      // Check duplicate
       if (focusQueue.find(t => t.id === task.id)) return;
       
       const newQueue = [...focusQueue, task];
@@ -354,7 +342,6 @@ const MediTrack = () => {
       const total = parseInt(config[subj]) || 0;
       for (let i = 1; i <= total; i++) {
         const id = `${subj}_${i}`;
-        // If lecture exists use its data, otherwise mock it for suggestion
         if (!lectures[id] || lectures[id].stage === 0) {
           const existing = lectures[id] || {};
           suggestions.push({ 
@@ -373,6 +360,7 @@ const MediTrack = () => {
     return suggestions;
   };
 
+  // Fixed the bug here: explicit subject assignment
   const getManageLectures = () => {
      if (!config || !selectedManageSubject) return [];
      const total = parseInt(config[selectedManageSubject]) || 0;
@@ -382,6 +370,7 @@ const MediTrack = () => {
         const lecture = lectures[id];
         list.push({ 
           id, 
+          subject: selectedManageSubject, // Added this line to fix the error
           number: i, 
           stage: lecture ? lecture.stage : 0, 
           nextReview: lecture ? lecture.nextReview : null,
@@ -399,7 +388,6 @@ const MediTrack = () => {
     return new Date(isoString).toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  // Helper to open edit modal
   const openEditModal = (task) => {
     setEditingTask({
       ...task,
