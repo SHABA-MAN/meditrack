@@ -13,9 +13,12 @@ import {
   collection, 
   doc, 
   setDoc, 
+  addDoc,
   onSnapshot,
   writeBatch,
-  deleteDoc
+  deleteDoc,
+  query,
+  orderBy
 } from 'firebase/firestore';
 import { 
   CheckCircle, 
@@ -40,8 +43,10 @@ import {
   Zap,
   Coffee,
   Edit2,
-  MoreVertical,
-  Flag
+  Flag,
+  History,
+  Play,
+  Calendar
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -78,9 +83,11 @@ const MediTrack = () => {
   // Data State
   const [config, setConfig] = useState(null); 
   const [lectures, setLectures] = useState({});
+  const [history, setHistory] = useState([]); // Session Logs
   
   // Focus Mode State
   const [focusQueue, setFocusQueue] = useState([]); 
+  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false); 
@@ -129,12 +136,15 @@ const MediTrack = () => {
       await signOut(auth);
       setConfig(null);
       setLectures({});
+      setHistory([]);
     }
   };
 
   // --- Data Sync ---
   useEffect(() => {
     if (!user) return;
+    
+    // 1. Settings
     const unsubConfig = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -145,12 +155,23 @@ const MediTrack = () => {
         setSettingsTab('guide'); 
       }
     });
+
+    // 2. Lectures
     const unsubLectures = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'lectures'), (snap) => {
       const data = {};
       snap.forEach(d => data[d.id] = d.data());
       setLectures(data);
     });
-    return () => { unsubConfig(); unsubLectures(); };
+
+    // 3. History (Logs)
+    const qHistory = query(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), orderBy('completedAt', 'desc'));
+    const unsubHistory = onSnapshot(qHistory, (snap) => {
+      const logs = [];
+      snap.forEach(d => logs.push({ id: d.id, ...d.data() }));
+      setHistory(logs);
+    });
+
+    return () => { unsubConfig(); unsubLectures(); unsubHistory(); };
   }, [user]);
 
   // --- Actions ---
@@ -217,6 +238,13 @@ const MediTrack = () => {
     setShowSettings(false);
   };
 
+  const startFocusSession = () => {
+    if (focusQueue.length === 0) return;
+    setIsFreeFocus(false);
+    setIsFocusModeActive(true);
+    setTimeout(() => setIsFocusAnimating(true), 50);
+  };
+
   const startFreeFocus = () => {
     setIsFreeFocus(true);
     setIsFocusModeActive(true);
@@ -228,7 +256,9 @@ const MediTrack = () => {
     setTimeout(() => {
       setIsFocusModeActive(false);
       setIsFreeFocus(false);
+      // Optional: keep queue or clear it? Clearing it to avoid confusion
       setFocusQueue([]);
+      setActiveTaskIndex(0);
     }, 500); 
   };
 
@@ -247,11 +277,23 @@ const MediTrack = () => {
       isCompleted = true; 
     }
 
+    // 1. Update Lecture Status
     const data = {
       id: task.id, subject: task.subject, number: task.number, stage: nextStage, lastStudied: today.toISOString(), nextReview: isCompleted ? 'COMPLETED' : nextDate.toISOString(), isCompleted
     };
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', task.id), data, { merge: true });
 
+    // 2. Add to History Log
+    await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
+      taskId: task.id,
+      subject: task.subject,
+      number: task.number,
+      title: task.title || '',
+      completedAt: today.toISOString(),
+      stageCompleted: task.stage
+    });
+
+    // 3. Update Queue UI
     const newQueue = focusQueue.filter(t => t.id !== task.id);
     setFocusQueue(newQueue);
 
@@ -300,14 +342,7 @@ const MediTrack = () => {
     if (taskData) {
       const task = JSON.parse(taskData);
       if (focusQueue.find(t => t.id === task.id)) return;
-      
-      const newQueue = [...focusQueue, task];
-      setFocusQueue(newQueue);
-      
-      if (newQueue.length === 2) {
-        setIsFocusModeActive(true);
-        setTimeout(() => setIsFocusAnimating(true), 50);
-      }
+      setFocusQueue([...focusQueue, task]);
     }
   };
 
@@ -360,7 +395,6 @@ const MediTrack = () => {
     return suggestions;
   };
 
-  // Fixed the bug here: explicit subject assignment
   const getManageLectures = () => {
      if (!config || !selectedManageSubject) return [];
      const total = parseInt(config[selectedManageSubject]) || 0;
@@ -370,7 +404,7 @@ const MediTrack = () => {
         const lecture = lectures[id];
         list.push({ 
           id, 
-          subject: selectedManageSubject, // Added this line to fix the error
+          subject: selectedManageSubject, 
           number: i, 
           stage: lecture ? lecture.stage : 0, 
           nextReview: lecture ? lecture.nextReview : null,
@@ -386,6 +420,11 @@ const MediTrack = () => {
     if (!isoString) return '';
     if (isoString === 'COMPLETED') return 'مكتمل';
     return new Date(isoString).toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
+  const formatTimeLog = (isoString) => {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleTimeString('ar-EG', { hour: '2-digit', minute:'2-digit' });
   };
 
   const openEditModal = (task) => {
@@ -460,57 +499,76 @@ const MediTrack = () => {
                  </button>
                </div>
              ) : (
-               // SPLIT SCREEN TASKS
+               // SPLIT SCREEN TASKS OR SINGLE
                <>
-                 {focusQueue.map((task, idx) => (
-                   <div 
-                     key={task.id} 
-                     className={`h-full flex flex-col items-center justify-center p-8 relative transition-all duration-500
-                       ${focusQueue.length === 2 ? 'w-1/2' : 'w-full'}
-                       ${idx === 0 && focusQueue.length === 2 ? 'border-l border-slate-800' : ''}
-                     `}
-                   >
-                      {/* Task Content */}
-                      <div className="text-center">
-                        {/* Subject Badge */}
-                        <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
-                          {task.subject}
-                        </div>
-
-                        {/* Title & Number */}
-                        <h2 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
-                          Lec {task.number}
-                        </h2>
-                        {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
-                        
-                        {/* Meta Info */}
-                        <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8">
-                           <span>{task.stage === 0 ? 'جديد' : `مراجعة ${task.stage}`}</span>
-                           {task.difficulty && (
-                             <span className={`px-1.5 py-0.5 rounded border ${task.difficulty === 'hard' ? 'border-red-900 text-red-400' : task.difficulty === 'easy' ? 'border-green-900 text-green-400' : 'border-slate-800'}`}>
-                               {task.difficulty === 'hard' ? 'صعب' : task.difficulty === 'easy' ? 'سهل' : 'عادي'}
-                             </span>
+                 {/* Only split screen if exactly 2 items. If 1 or 3+, show single active */}
+                 {focusQueue.length === 2 ? (
+                    focusQueue.map((task, idx) => (
+                      <div 
+                        key={task.id} 
+                        className={`h-full flex flex-col items-center justify-center p-8 relative transition-all duration-500 w-1/2 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                      >
+                         {/* Task Content */}
+                         <div className="text-center">
+                           <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                             {task.subject}
+                           </div>
+                           <h2 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
+                             Lec {task.number}
+                           </h2>
+                           {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
+                           
+                           {task.description && (
+                             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light mt-4">
+                               {task.description}
+                             </p>
                            )}
-                        </div>
 
-                        {/* Description (Minimal) */}
-                        {task.description && (
-                          <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light">
-                            {task.description}
-                          </p>
-                        )}
-
-                        {/* Minimal Done Button */}
-                        <button 
-                          onClick={() => completeTask(task)}
-                          className="w-12 h-12 rounded-full border border-slate-700 bg-slate-900 hover:bg-emerald-900 hover:border-emerald-700 text-slate-500 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 mx-auto group"
-                          title="إتمام"
-                        >
-                           <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
-                        </button>
+                           <button 
+                             onClick={() => completeTask(task)}
+                             className="w-12 h-12 mt-8 rounded-full border border-slate-700 bg-slate-900 hover:bg-emerald-900 hover:border-emerald-700 text-slate-500 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 mx-auto group"
+                             title="إتمام"
+                           >
+                              <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
+                           </button>
+                         </div>
                       </div>
-                   </div>
-                 ))}
+                    ))
+                 ) : (
+                    // Single View for 1 or 3+ (Showing current task)
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 relative">
+                       {/* Navigation if needed, or just current */}
+                       {(() => {
+                          const task = focusQueue[activeTaskIndex];
+                          return (
+                            <div className="text-center">
+                               <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                                 {task.subject}
+                               </div>
+                               <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tight">
+                                 Lec {task.number}
+                               </h2>
+                               {task.title && <p className="text-xl text-emerald-400 font-medium mb-2">{task.title}</p>}
+                               <p className="text-slate-500 text-sm mb-8">مهمة {activeTaskIndex + 1} من {focusQueue.length}</p>
+                               
+                               {task.description && (
+                                 <p className="text-slate-400 text-base max-w-md mx-auto mb-12 leading-relaxed font-light">
+                                   {task.description}
+                                 </p>
+                               )}
+
+                               <button 
+                                 onClick={() => completeTask(task)}
+                                 className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20"
+                               >
+                                  <CheckCircle size={24} className="ml-2" />
+                                  <span>إتمام</span>
+                               </button>
+                            </div>
+                          );
+                       })()}
+                    </div>
+                 )}
                </>
              )}
           </div>
@@ -649,7 +707,7 @@ const MediTrack = () => {
                 </div>
                 <h3 className="text-xl font-black text-slate-700 mb-1">منطقة التركيز</h3>
                 <p className="text-slate-500 text-sm max-w-[200px] leading-relaxed mb-6">
-                  اسحب <strong>محاضرتين</strong> هنا لبدء جلسة الانغماس الكامل 🚀
+                  اسحب أي عدد من المحاضرات هنا للبدء 🚀
                 </p>
                 
                 <button 
@@ -667,41 +725,34 @@ const MediTrack = () => {
              <div className="w-full flex-1 flex flex-col">
                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
                   <span>طابور المذاكرة</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${focusQueue.length >= 2 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {focusQueue.length}/2
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                    {focusQueue.length}
                   </span>
                 </h3>
                 
-                <div className="space-y-2 flex-1">
+                <div className="space-y-2 flex-1 overflow-y-auto max-h-[40vh] mb-4">
                   {focusQueue.map((task, idx) => (
                     <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex justify-between items-center animate-in slide-in-from-bottom duration-300">
                        <div className="flex items-center gap-3">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
                           </span>
-                          <div className="flex flex-col items-start">
-                             <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
-                             {task.title && <span className="text-[10px] text-slate-400">{task.title}</span>}
-                          </div>
+                          <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
                        </div>
                        <button onClick={() => removeFromQueue(task.id)} className="text-slate-300 hover:text-red-500">
                          <X size={16} />
                        </button>
                     </div>
                   ))}
-                  
-                  {focusQueue.length === 1 && (
-                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-3 flex items-center justify-center text-slate-400 text-xs italic animate-pulse">
-                      + اسحب محاضرة كمان
-                    </div>
-                  )}
                 </div>
 
-                {focusQueue.length >= 2 && (
-                  <div className="mt-4 bg-green-50 text-green-700 p-3 rounded-lg text-sm font-bold animate-pulse">
-                    جاري الدخول لوضع التركيز... ⏳
-                  </div>
-                )}
+                <button 
+                  onClick={startFocusSession}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Play size={20} />
+                  ابدأ الجلسة ({focusQueue.length})
+                </button>
              </div>
            )}
         </div>
@@ -814,11 +865,12 @@ const MediTrack = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="bg-slate-50 p-4 border-b flex justify-between items-center">
-              <div className="flex gap-4">
-                 <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 ${settingsTab==='guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
-                 <button onClick={() => setSettingsTab('config')} className={`text-sm font-bold pb-1 ${settingsTab==='config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الأعداد</button>
-                 <button onClick={() => setSettingsTab('manage')} className={`text-sm font-bold pb-1 ${settingsTab==='manage' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>التقدم</button>
-                 <button onClick={() => setSettingsTab('danger')} className={`text-sm font-bold pb-1 ${settingsTab==='danger' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500'}`}>تصفير</button>
+              <div className="flex gap-4 overflow-x-auto">
+                 <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
+                 <button onClick={() => setSettingsTab('config')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الأعداد</button>
+                 <button onClick={() => setSettingsTab('manage')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='manage' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>التقدم</button>
+                 <button onClick={() => setSettingsTab('history')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='history' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>السجل</button>
+                 <button onClick={() => setSettingsTab('danger')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='danger' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500'}`}>تصفير</button>
               </div>
               <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
@@ -826,12 +878,12 @@ const MediTrack = () => {
             <div className="p-6 overflow-y-auto bg-white flex-1">
                {settingsTab === 'guide' && (
                   <div className="space-y-4 text-slate-600 text-sm">
-                     <h3 className="font-bold text-slate-800">التحديث الجديد: تحدي المحاضرتين 💪</h3>
-                     <p>عشان نضمن إنك مش بتدلع، لازم تسحب <strong>محاضرتين</strong> في منطقة التركيز عشان تقدر تبدأ.</p>
+                     <h3 className="font-bold text-slate-800">طريقة الاستخدام الجديدة 🖱️</h3>
+                     <p>النظام الآن يعتمد على السحب والإفلات للتركيز العميق.</p>
                      <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
-                        <li><strong>1.</strong> اسحب المحاضرة الأولى.</li>
-                        <li><strong>2.</strong> اسحب المحاضرة الثانية.</li>
-                        <li><strong>3.</strong> النظام هيفتح وضع الشاشة الكاملة (Split Screen) للاثنين معاً.</li>
+                        <li><strong>الخطوة 1:</strong> اسحب أي عدد من المحاضرات (1، 2، أو أكثر) إلى منطقة التركيز.</li>
+                        <li><strong>الخطوة 2:</strong> اضغط "ابدأ الجلسة" للدخول في وضع التركيز.</li>
+                        <li><strong>الخطوة 3:</strong> كل إنجاز سيتم حفظه تلقائياً في سجل الجلسات.</li>
                      </ul>
                   </div>
                )}
@@ -879,6 +931,45 @@ const MediTrack = () => {
                               </div>
                            </div>
                         ))}
+                     </div>
+                  </div>
+               )}
+
+               {settingsTab === 'history' && (
+                  <div>
+                     <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                       <History size={18} className="text-blue-500"/>
+                       سجل الإنجازات
+                     </h3>
+                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        {history.length === 0 ? (
+                           <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-lg">
+                              لم تقم بأي جلسات بعد. ابدأ الآن! 🚀
+                           </div>
+                        ) : (
+                           history.map((log) => (
+                              <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition">
+                                 <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded flex items-center justify-center text-[10px] font-bold text-white ${SUBJECTS[log.subject]?.badge || 'bg-slate-400'}`}>
+                                       {log.subject}
+                                    </div>
+                                    <div>
+                                       <p className="font-bold text-sm text-slate-700">Lecture {log.number}</p>
+                                       {log.title && <p className="text-[10px] text-slate-500">{log.title}</p>}
+                                    </div>
+                                 </div>
+                                 <div className="text-right">
+                                    <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full inline-block mb-1">
+                                       {log.stageCompleted === 0 ? 'مذاكرة أولى' : `مراجعة ${log.stageCompleted}`}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 flex items-center gap-1 justify-end">
+                                       <Calendar size={10}/>
+                                       {formatDate(log.completedAt)} - {formatTimeLog(log.completedAt)}
+                                    </div>
+                                 </div>
+                              </div>
+                           ))
+                        )}
                      </div>
                   </div>
                )}
