@@ -46,7 +46,8 @@ import {
   Flag,
   History,
   Play,
-  Calendar
+  Calendar,
+  CheckSquare
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -87,7 +88,6 @@ const MediTrack = () => {
   
   // Focus Mode State
   const [focusQueue, setFocusQueue] = useState([]); 
-  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false); 
@@ -258,7 +258,6 @@ const MediTrack = () => {
       setIsFreeFocus(false);
       // Optional: keep queue or clear it? Clearing it to avoid confusion
       setFocusQueue([]);
-      setActiveTaskIndex(0);
     }, 500); 
   };
 
@@ -293,7 +292,7 @@ const MediTrack = () => {
       stageCompleted: task.stage
     });
 
-    // 3. Update Queue UI
+    // 3. Update Queue UI (Remove the completed task)
     const newQueue = focusQueue.filter(t => t.id !== task.id);
     setFocusQueue(newQueue);
 
@@ -464,7 +463,7 @@ const MediTrack = () => {
   return (
     <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
       
-      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (SPLIT SCREEN) 🌑 */}
+      {/* 🌑 FULL SCREEN FOCUS MODE OVERLAY (ALL AT ONCE VIEW) 🌑 */}
       {isFocusModeActive && (
         <div 
           className={`fixed inset-0 z-50 flex flex-col transition-all duration-500 ease-in-out transform ${
@@ -474,102 +473,89 @@ const MediTrack = () => {
           }`}
         >
           {/* Top Bar (Minimal) */}
-          <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20 pointer-events-none">
+             <div className="pointer-events-auto flex items-center gap-3">
+               <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-full bg-slate-900/50 backdrop-blur-md">
+                 {isFreeFocus ? 'Free Session' : `Active Tasks: ${focusQueue.length}`}
+               </span>
+             </div>
              <div className="pointer-events-auto">
                 <button 
                   onClick={closeFocusMode} 
-                  className="p-2 text-slate-500 hover:text-white transition"
+                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-full"
                 >
-                  <X size={20} />
+                  <X size={24} />
                 </button>
              </div>
           </div>
 
-          <div className="flex-1 flex h-full">
+          <div className="flex-1 flex flex-col h-full pt-20 pb-10 px-6">
              {isFreeFocus ? (
                // FREE FOCUS UI (Minimal)
                <div className="w-full h-full flex flex-col items-center justify-center text-white p-8">
-                 <Zap size={48} className="text-amber-500 mb-6 opacity-80" />
-                 <h2 className="text-2xl font-light tracking-wide mb-8">جلسة تركيز حرة</h2>
+                 <Zap size={64} className="text-amber-500 mb-8 opacity-90 animate-pulse" />
+                 <h2 className="text-4xl font-light tracking-wide mb-4">جلسة تركيز حرة</h2>
+                 <p className="text-slate-500 mb-12 max-w-md text-center leading-relaxed">
+                   استمتع بالهدوء والتركيز العميق. لا يوجد مهام، فقط أنت والمادة العلمية.
+                 </p>
                  <button 
                    onClick={closeFocusMode} 
-                   className="px-6 py-2 border border-slate-700 hover:bg-slate-800 rounded-full text-sm text-slate-400 hover:text-white transition"
+                   className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-full text-sm font-bold transition-all duration-300"
                  >
-                    إنهاء
+                    إنهاء الجلسة
                  </button>
                </div>
              ) : (
-               // SPLIT SCREEN TASKS OR SINGLE
-               <>
-                 {/* Only split screen if exactly 2 items. If 1 or 3+, show single active */}
-                 {focusQueue.length === 2 ? (
-                    focusQueue.map((task, idx) => (
-                      <div 
-                        key={task.id} 
-                        className={`h-full flex flex-col items-center justify-center p-8 relative transition-all duration-500 w-1/2 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-                      >
-                         {/* Task Content */}
-                         <div className="text-center">
-                           <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
-                             {task.subject}
-                           </div>
-                           <h2 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
-                             Lec {task.number}
-                           </h2>
-                           {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
-                           
-                           {task.description && (
-                             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light mt-4">
-                               {task.description}
-                             </p>
+               // ALL TASKS GRID VIEW (Pure & Clean)
+               <div className="w-full h-full overflow-y-auto">
+                 <div className="flex flex-wrap justify-center items-center content-center min-h-full gap-6 pb-10">
+                   {focusQueue.map((task) => (
+                     <div 
+                       key={task.id} 
+                       className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
+                     >
+                        {/* Subject Badge */}
+                        <div className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                          {task.subject}
+                        </div>
+
+                        {/* Title & Number */}
+                        <h2 className="text-5xl font-black text-white mb-2 tracking-tight">
+                          Lec {task.number}
+                        </h2>
+                        {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
+                        
+                        {/* Meta Info */}
+                        <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8 uppercase tracking-widest">
+                           <span>{task.stage === 0 ? 'New' : `Review ${task.stage}`}</span>
+                           {task.difficulty && (
+                             <span className={`flex items-center gap-1 ${task.difficulty === 'hard' ? 'text-red-400' : task.difficulty === 'easy' ? 'text-green-400' : ''}`}>
+                               {task.difficulty === 'hard' && <Flag size={10} fill="currentColor" />}
+                               {task.difficulty === 'hard' ? 'HARD' : task.difficulty === 'easy' ? 'EASY' : 'NORMAL'}
+                             </span>
                            )}
+                        </div>
 
-                           <button 
-                             onClick={() => completeTask(task)}
-                             className="w-12 h-12 mt-8 rounded-full border border-slate-700 bg-slate-900 hover:bg-emerald-900 hover:border-emerald-700 text-slate-500 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 mx-auto group"
-                             title="إتمام"
-                           >
-                              <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />
-                           </button>
-                         </div>
-                      </div>
-                    ))
-                 ) : (
-                    // Single View for 1 or 3+ (Showing current task)
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 relative">
-                       {/* Navigation if needed, or just current */}
-                       {(() => {
-                          const task = focusQueue[activeTaskIndex];
-                          return (
-                            <div className="text-center">
-                               <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
-                                 {task.subject}
-                               </div>
-                               <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tight">
-                                 Lec {task.number}
-                               </h2>
-                               {task.title && <p className="text-xl text-emerald-400 font-medium mb-2">{task.title}</p>}
-                               <p className="text-slate-500 text-sm mb-8">مهمة {activeTaskIndex + 1} من {focusQueue.length}</p>
-                               
-                               {task.description && (
-                                 <p className="text-slate-400 text-base max-w-md mx-auto mb-12 leading-relaxed font-light">
-                                   {task.description}
-                                 </p>
-                               )}
+                        {/* Description (Minimal) */}
+                        {task.description && (
+                          <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light border-t border-slate-800 pt-4">
+                            {task.description}
+                          </p>
+                        )}
 
-                               <button 
-                                 onClick={() => completeTask(task)}
-                                 className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-2xl focus:outline-none hover:bg-emerald-500 active:scale-95 shadow-xl shadow-emerald-900/20"
-                               >
-                                  <CheckCircle size={24} className="ml-2" />
-                                  <span>إتمام</span>
-                               </button>
-                            </div>
-                          );
-                       })()}
-                    </div>
-                 )}
-               </>
+                        {/* Minimal Done Button */}
+                        <button 
+                          onClick={() => completeTask(task)}
+                          className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
+                          title="إتمام"
+                        >
+                           <CheckCircle size={32} />
+                        </button>
+                        <span className="text-[10px] text-slate-600 mt-3 font-medium uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark Done</span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
              )}
           </div>
         </div>
