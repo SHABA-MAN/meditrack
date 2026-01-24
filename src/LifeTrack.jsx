@@ -308,7 +308,8 @@ const LifeTrack = ({ onBack }) => {
         description: editingTask.description, 
         isRecurring: editingTask.isRecurring,
         playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
-        watchedEpisodes: editingTask.watchedEpisodes || []
+        watchedEpisodes: editingTask.watchedEpisodes || [],
+        playlistId: editingTask.playlistId || null
     });
 
     if (editingTask.originalTitle !== editingTask.title && !editingTask.isSplit) {
@@ -595,9 +596,25 @@ const LifeTrack = ({ onBack }) => {
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
 
              {/* 📺 PLAYLIST TRACKER SETTINGS 📺 */}
-             {editingTask.playlistId && (
-                <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
-                   <div className="flex justify-between items-center mb-4">
+             <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => {
+                   if (!editingTask.playlistId) {
+                      // Try auto-detect from description
+                      const foundId = getPlaylistId(editingTask.originalText || editingTask.description || '') || getPlaylistId(editingTask.videoUrl || '');
+                      setEditingTask({...editingTask, playlistId: foundId || 'manual'});
+                   } else {
+                      setEditingTask({...editingTask, playlistId: null, playlistLength: 0, watchedEpisodes: []});
+                   }
+                }}>
+                   <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.playlistId ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
+                      {editingTask.playlistId && <Layers size={12} className="text-white"/>}
+                   </div>
+                   <span className="text-sm font-bold text-slate-300">تفعيل نظام السلسلة / القائمة</span>
+                </div>
+                
+                {editingTask.playlistId && (
+                   <>
+                     <div className="flex justify-between items-center mb-4">
                       <label className="text-xs font-bold text-slate-400 uppercase">عدد فيديوهات السلسلة</label>
                       <input 
                         type="number" 
@@ -641,8 +658,9 @@ const LifeTrack = ({ onBack }) => {
                         </div>
                       </div>
                    )}
+                   </>
+                )}
                 </div>
-             )}
              <div className="flex gap-2 mb-4">
                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-sm">حفظ</button>
                 <button type="button" onClick={() => setEditingTask(null)} className="px-4 bg-slate-800 text-white py-2 rounded-lg font-bold text-sm">إلغاء</button>
