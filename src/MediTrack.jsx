@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import LifeTrack from './LifeTrack';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -77,7 +76,7 @@ const SUBJECTS = {
 
 const INTERVALS = [1, 2, 4, 7];
 
-const MediTrackApp = ({ onSwitchToLifeTrack }) => {
+const MediTrack = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
@@ -670,7 +669,6 @@ const MediTrackApp = ({ onSwitchToLifeTrack }) => {
         </div>
         
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={16} className="text-amber-500" /> LifeTrack</button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -981,14 +979,4 @@ const MediTrackApp = ({ onSwitchToLifeTrack }) => {
   );
 };
 
-const App = () => {
-  const [currentView, setCurrentView] = useState('meditrack');
-
-  if (currentView === 'lifetrack') {
-    return <LifeTrack onBack={() => setCurrentView('meditrack')} />;
-  }
-
-  return <MediTrackApp onSwitchToLifeTrack={() => setCurrentView('lifetrack')} />;
-};
-
-export default App;
+export default MediTrack;
