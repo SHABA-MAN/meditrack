@@ -137,79 +137,35 @@ const LifeTrack = ({ onBack }) => {
         if (update.message && update.message.text) {
            const text = update.message.text;
            const messageId = update.message.message_id;
-           const lines = text.split('\n').filter(l => l.trim().length > 0);
-           const allMatches = text.match(ytRegex);
-
-           // 📺 Case: Multiple YouTube Links (Playlist/Series)
-           if (allMatches && allMatches.length > 1) {
-              let seriesTitle = lines.find(l => !ytRegex.test(l));
-              if (!seriesTitle) seriesTitle = "سلسلة يوتيوب";
-              else if (seriesTitle.length > 60) seriesTitle = seriesTitle.substring(0, 60) + "...";
+           
+           // Simple Import (No Auto-Split)
+           const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
+           if (!exists) {
+              // Check for embedded video properties in raw text (just first one usually)
+              const match = text.match(ytRegex);
+              let videoId = null;
+              let videoUrl = null;
               
-              let vidIndex = 0;
-              for (const line of lines) {
-                 const lineMatch = line.match(ytRegex);
-                 if (lineMatch) {
-                    const url = lineMatch[0];
-                    const videoId = getVideoId(url);
-                    let title = line.replace(url, '').replace(/^[\d\-\.\)]+\s*/, '').trim(); 
-                    if (!title) title = `فيديو ${vidIndex + 1}`;
-                    
-                    const subTaskId = `${messageId}_${vidIndex}`;
-                    const exists = tasks.find(t => t.id === subTaskId);
-                    
-                    if (!exists) {
-                       const newTask = {
-                          id: subTaskId,
-                          telegramId: messageId,
-                          title: title,
-                          description: `السلسلة: ${seriesTitle}`,
-                          videoUrl: url,
-                          videoId: videoId,
-                          stage: 'inbox',
-                          isRecurring: false,
-                          isSplit: true, 
-                          originalText: text,
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString()
-                       };
-                       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
-                       newCount++;
-                    }
-                    vidIndex++;
-                 }
+              if (match && match.length === 1) { // Only auto-embed if single video
+                 videoUrl = match[0];
+                 videoId = getVideoId(videoUrl);
               }
 
-           } else {
-              // 📩 Case: Single Video or Normal Message
-              const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
-              if (!exists) {
-                 // Check if it's a single video
-                 const singleMatch = text.match(ytRegex);
-                 let videoId = null;
-                 let videoUrl = null;
-                 let title = text;
-
-                 if (singleMatch) {
-                    videoUrl = singleMatch[0];
-                    videoId = getVideoId(videoUrl);
-                    title = text.replace(videoUrl, '').trim() || 'فيديو يوتيوب';
-                 }
-
-                 const newTask = {
-                   telegramId: messageId,
-                   title: title,
-                   description: videoUrl ? '' : '',
-                   videoUrl: videoUrl,
-                   videoId: videoId,
-                   stage: 'inbox',
-                   isRecurring: false,
-                   createdAt: new Date().toISOString(),
-                   updatedAt: new Date().toISOString()
-                 };
-                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
-                 newCount++;
-              }
+              const newTask = {
+                id: `${messageId}`, // Use ID as Doc Key
+                telegramId: messageId,
+                title: text.replace(videoUrl || '', '').trim() || (videoId ? 'فيديو يوتيوب' : text),
+                description: videoUrl ? '' : '', // Keep clean for single videos
+                videoUrl: videoUrl,
+                videoId: videoId,
+                originalText: text, // Critical for extraction later
+                stage: 'inbox',
+                isRecurring: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
+              newCount++;
            }
         }
       }
@@ -223,6 +179,57 @@ const LifeTrack = ({ onBack }) => {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const extractVideos = async (task) => {
+     if (!task.originalText) return;
+     const ytRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g;
+     const matches = task.originalText.match(ytRegex);
+     
+     if (!matches || matches.length < 2) {
+        alert("لا توجد قائمة فيديوهات لاستخراجها (أقل من رابطين).");
+        return;
+     }
+
+     if (!confirm(`تم العثور على ${matches.length} فيديوهات. هل تريد تحويل هذا الهدف إلى سلسلة أهداف منفصلة؟`)) return;
+
+     const lines = task.originalText.split('\n').filter(l => l.trim().length > 0);
+     let seriesTitle = lines.find(l => !ytRegex.test(l)) || "سلسلة يوتيوب";
+     if (seriesTitle.length > 50) seriesTitle = seriesTitle.substring(0, 50) + "...";
+
+     let vidIndex = 0;
+     for (const line of lines) {
+       const lineMatch = line.match(ytRegex);
+       if (lineMatch) {
+         const url = lineMatch[0];
+         const videoId = getVideoId(url);
+         let title = line.replace(url, '').replace(/^[\d\-\.\)]+\s*/, '').trim(); 
+         if (!title) title = `فيديو ${vidIndex + 1}`;
+
+         const subTaskId = `${task.telegramId}_${vidIndex}`;
+         const newTask = {
+            id: subTaskId,
+            telegramId: task.telegramId,
+            title: title,
+            description: `السلسلة: ${seriesTitle}`,
+            videoUrl: url,
+            videoId: videoId,
+            stage: task.stage, // Keep same stage
+            isRecurring: false,
+            isSplit: true,
+            originalText: task.originalText,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+         };
+         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
+         vidIndex++;
+       }
+     }
+     
+     // Remove Original Container Task
+     await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
+     setEditingTask(null);
+     alert("تم تقسيم السلسلة بنجاح! 🎉");
   };
 
   const deleteTelegramMessage = async (taskId, telegramId) => {
@@ -529,7 +536,21 @@ const LifeTrack = ({ onBack }) => {
              <h3 className="font-bold text-lg text-white mb-4">تعديل الهدف</h3>
              <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-32 mb-4 resize-none" value={editingTask.title} onChange={e => setEditingTask({...editingTask, title: e.target.value})} />
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
-             <div className="flex gap-2"><button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-sm">حفظ</button><button type="button" onClick={() => setEditingTask(null)} className="px-4 bg-slate-800 text-white py-2 rounded-lg font-bold text-sm">إلغاء</button></div>
+             <div className="flex gap-2 mb-4">
+                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-sm">حفظ</button>
+                <button type="button" onClick={() => setEditingTask(null)} className="px-4 bg-slate-800 text-white py-2 rounded-lg font-bold text-sm">إلغاء</button>
+             </div>
+
+             {/* 🎬 EXTRACTION BUTTON 🎬 */}
+             {editingTask?.originalText && editingTask.originalText.match(/(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g)?.length > 1 && (
+                <button 
+                  type="button" 
+                  onClick={() => extractVideos(editingTask)}
+                  className="w-full bg-slate-800 border-t border-slate-700 pt-3 mt-2 text-slate-400 text-xs font-bold hover:text-amber-500 hover:bg-slate-800/50 flex items-center justify-center gap-2 transition"
+                >
+                   <Layers size={14}/> استخراج قائمة الفيديوهات ({editingTask.originalText.match(/(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g).length})
+                </button>
+             )}
            </form>
         </div>
       )}
