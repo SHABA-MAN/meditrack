@@ -31,7 +31,8 @@ import {
   Play,
   X,
   Layers,
-  Coffee
+  Coffee,
+  Youtube
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -57,6 +58,13 @@ const COLUMNS = {
 
 const API_URL = 'http://localhost:3001/api/telegram';
 
+const getVideoId = (url) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const LifeTrack = ({ onBack }) => {
   // Core State
   const [user, setUser] = useState(null);
@@ -73,6 +81,9 @@ const LifeTrack = ({ onBack }) => {
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false);
+  
+  // Video Player State
+  const [activeVideo, setActiveVideo] = useState(null); // ID of task currently playing video
 
   // --- Effects ---
   useEffect(() => {
@@ -140,6 +151,7 @@ const LifeTrack = ({ onBack }) => {
                  const lineMatch = line.match(ytRegex);
                  if (lineMatch) {
                     const url = lineMatch[0];
+                    const videoId = getVideoId(url);
                     let title = line.replace(url, '').replace(/^[\d\-\.\)]+\s*/, '').trim(); 
                     if (!title) title = `فيديو ${vidIndex + 1}`;
                     
@@ -151,10 +163,12 @@ const LifeTrack = ({ onBack }) => {
                           id: subTaskId,
                           telegramId: messageId,
                           title: title,
-                          description: `السلسلة: ${seriesTitle}\nالرابط: ${url}`,
+                          description: `السلسلة: ${seriesTitle}`,
+                          videoUrl: url,
+                          videoId: videoId,
                           stage: 'inbox',
                           isRecurring: false,
-                          isSplit: true, // Mark as part of a split message
+                          isSplit: true, 
                           originalText: text,
                           createdAt: new Date().toISOString(),
                           updatedAt: new Date().toISOString()
@@ -170,10 +184,24 @@ const LifeTrack = ({ onBack }) => {
               // 📩 Case: Single Video or Normal Message
               const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
               if (!exists) {
+                 // Check if it's a single video
+                 const singleMatch = text.match(ytRegex);
+                 let videoId = null;
+                 let videoUrl = null;
+                 let title = text;
+
+                 if (singleMatch) {
+                    videoUrl = singleMatch[0];
+                    videoId = getVideoId(videoUrl);
+                    title = text.replace(videoUrl, '').trim() || 'فيديو يوتيوب';
+                 }
+
                  const newTask = {
                    telegramId: messageId,
-                   title: text,
-                   description: '',
+                   title: title,
+                   description: videoUrl ? '' : '',
+                   videoUrl: videoUrl,
+                   videoId: videoId,
                    stage: 'inbox',
                    isRecurring: false,
                    createdAt: new Date().toISOString(),
@@ -224,26 +252,19 @@ const LifeTrack = ({ onBack }) => {
           if (task.isSplit) {
              const siblings = tasks.filter(t => t.telegramId === task.telegramId && t.id !== task.id);
              if (siblings.length === 0) {
-                // Last one standing: Delete the message
                 await deleteTelegramMessage(task.id, task.telegramId);
              } else {
-                // Others remain: Try to remove the line from the message
                 try {
-                   const urlMatch = task.description.match(/(https?:\/\/[^\s]+)/);
-                   if (urlMatch && task.originalText) {
-                      const url = urlMatch[0];
-                      const newLines = task.originalText.split('\n').filter(l => !l.includes(url));
+                   if (task.videoUrl && task.originalText) {
+                      const newLines = task.originalText.split('\n').filter(l => !l.includes(task.videoUrl));
                       const newText = newLines.join('\n');
                       if (newText.trim() !== task.originalText.trim()) {
                          await updateTelegramMessage(task.telegramId, newText);
-                         // Note: We can't easily update 'originalText' of other tasks without many writes.
-                         // But for now, this visual update on Telegram is enough.
                       }
                    }
                 } catch (e) { console.warn("Partial edit failed", e); }
              }
           } else {
-             // Normal Message
              await deleteTelegramMessage(task.id, task.telegramId);
           }
        }
@@ -279,6 +300,7 @@ const LifeTrack = ({ onBack }) => {
       setIsFocusModeActive(false);
       setIsFreeFocus(false);
       setFocusQueue([]);
+      setActiveVideo(null);
     }, 500);
   };
 
@@ -343,19 +365,44 @@ const LifeTrack = ({ onBack }) => {
                  <button onClick={closeFocusMode} className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-full text-sm font-bold transition-all duration-300">إنهاء الجلسة</button>
                </div>
              ) : (
-               <div className="flex flex-wrap justify-center content-start gap-6 pb-10">
+               <div className="flex flex-wrap justify-center content-start gap-6 pb-10 max-w-7xl mx-auto">
                  {focusQueue.map((task) => (
-                   <div key={task.id} className="bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-6 rounded-2xl shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all hover:-translate-y-1">
-                      <h2 className="text-2xl font-bold text-white mb-2 leading-relaxed">{task.title}</h2>
-                      {task.description && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap dir-ltr">{task.description}</p>}
-                      <button onClick={async () => {
-                          await completeTask(task);
-                          removeFromQueue(task.id);
-                          if(focusQueue.length <= 1) closeFocusMode();
-                      }} className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg flex items-center justify-center transition-all transform hover:scale-110 mb-2">
-                         <CheckCircle size={32} />
-                      </button>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">إنجاز</span>
+                   <div key={task.id} className={`bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-0 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col items-center text-center relative group transition-all hover:-translate-y-1 overflow-hidden ${task.videoId ? 'col-span-2' : ''}`}>
+                      
+                      {/* 📺 VIDEO PLAYER MODE 📺 */}
+                      {task.videoId ? (
+                        <div className="w-full aspect-video bg-black relative">
+                            <iframe 
+                              src={`https://www.youtube.com/embed/${task.videoId}`} 
+                              className="w-full h-full"
+                              allowFullScreen
+                              title={task.title}
+                            />
+                        </div>
+                      ) : null}
+
+                      <div className="p-6 w-full">
+                        <h2 className="text-xl font-bold text-white mb-2 leading-relaxed flex items-center justify-center gap-2">
+                          {task.videoId && <Youtube className="text-red-600" size={24}/>}
+                          {task.title}
+                        </h2>
+                        {task.description && !task.videoId && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap dir-ltr">{task.description}</p>}
+                        
+                        <div className="mt-4 flex justify-center gap-4">
+                           <button onClick={async () => {
+                               await completeTask(task);
+                               removeFromQueue(task.id);
+                               if(focusQueue.length <= 1) closeFocusMode();
+                           }} className="px-6 py-2 bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white border border-emerald-900 rounded-full font-bold transition flex items-center gap-2">
+                             <CheckCircle size={18} /> تم الإنجاز
+                           </button>
+                           {task.videoId && (
+                              <a href={task.videoUrl} target="_blank" rel="noreferrer" className="px-6 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-full font-bold transition text-sm flex items-center gap-2">
+                                مشاهدة في يوتيوب
+                              </a>
+                           )}
+                        </div>
+                      </div>
                    </div>
                  ))}
                </div>
@@ -400,8 +447,9 @@ const LifeTrack = ({ onBack }) => {
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2 mb-4">
                      {focusQueue.map(q => (
-                       <div key={q.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex justify-between items-start animate-in zoom-in-95">
-                          <p className="text-xs font-medium text-slate-200 line-clamp-2">{q.title}</p>
+                       <div key={q.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 flex justify-between items-center animate-in zoom-in-95 gap-2">
+                          {q.videoId && <img src={`https://img.youtube.com/vi/${q.videoId}/default.jpg`} className="w-12 h-9 object-cover rounded" alt="" />}
+                          <p className="text-xs font-medium text-slate-200 line-clamp-2 flex-1">{q.title}</p>
                           <button onClick={() => removeFromQueue(q.id)} className="text-slate-500 hover:text-red-400"><X size={14}/></button>
                        </div>
                      ))}
@@ -422,15 +470,34 @@ const LifeTrack = ({ onBack }) => {
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                       {tasks.filter(t => t.stage === col.id).map(task => (
-                        <div key={task.id} draggable onDragStart={e => handleDragStart(e, task)} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl p-4 shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-1 relative">
-                            {task.isRecurring && <div className="absolute top-3 left-3 text-amber-500" title="هدف مستمر"><Repeat size={14} /></div>}
-                            <p className="text-slate-200 font-medium leading-relaxed mb-4 text-sm mt-1">{task.title}</p>
-                            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-                              <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                  <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={14}/></button>
-                                  <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={14}/></button>
+                        <div key={task.id} draggable onDragStart={e => handleDragStart(e, task)} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-1 relative">
+                            {/* 🖼️ THUMBNAIL IF VIDEO 🖼️ */}
+                            {task.videoId ? (
+                               <div className="w-full aspect-video relative group/video">
+                                  <img 
+                                    src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
+                                    className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
+                                    alt="thumbnail"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
+                                     <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+                                        <Play size={16} fill="white" />
+                                     </div>
+                                  </div>
+                               </div>
+                            ) : null}
+
+                            <div className="p-4">
+                              {task.isRecurring && <div className="absolute top-3 left-3 text-amber-500 z-10" title="هدف مستمر"><Repeat size={14} /></div>}
+                              <p className={`text-slate-200 font-medium leading-relaxed mb-4 text-sm ${!task.videoId ? 'mt-1' : ''}`}>{task.title}</p>
+                              
+                              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                                <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                    <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={14}/></button>
+                                    <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={14}/></button>
+                                </div>
+                                <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-1 rounded-md transition"><CheckCircle size={12} /> إنجاز</button>
                               </div>
-                              <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-1 rounded-md transition"><CheckCircle size={12} /> إنجاز</button>
                             </div>
                         </div>
                       ))}
