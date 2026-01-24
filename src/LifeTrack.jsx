@@ -65,6 +65,13 @@ const getVideoId = (url) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+const getPlaylistId = (url) => {
+  if (!url) return null;
+  const regExp = /[?&]list=([^#&?]+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+};
+
 const LifeTrack = ({ onBack }) => {
   // Core State
   const [user, setUser] = useState(null);
@@ -137,36 +144,38 @@ const LifeTrack = ({ onBack }) => {
         if (update.message && update.message.text) {
            const text = update.message.text;
            const messageId = update.message.message_id;
-           
-           // Simple Import (No Auto-Split)
-           const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
-           if (!exists) {
-              // Check for embedded video properties in raw text (just first one usually)
-              const match = text.match(ytRegex);
-              let videoId = null;
-              let videoUrl = null;
-              
-              if (match && match.length === 1) { // Only auto-embed if single video
-                 videoUrl = match[0];
-                 videoId = getVideoId(videoUrl);
-              }
+                      // 📩 Case: Single Video, Playlist or Normal Message
+              const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
+              if (!exists) {
+                 // Check if it's a single video or playlist
+                 const singleMatch = text.match(ytRegex);
+                 let videoId = null;
+                 let playlistId = null;
+                 let videoUrl = null;
+                 let title = text;
 
-              const newTask = {
-                id: `${messageId}`, // Use ID as Doc Key
-                telegramId: messageId,
-                title: text.replace(videoUrl || '', '').trim() || (videoId ? 'فيديو يوتيوب' : text),
-                description: videoUrl ? '' : '', // Keep clean for single videos
-                videoUrl: videoUrl,
-                videoId: videoId,
-                originalText: text, // Critical for extraction later
-                stage: 'inbox',
-                isRecurring: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              };
-              await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
-              newCount++;
-           }
+                 if (singleMatch) {
+                    videoUrl = singleMatch[0];
+                    videoId = getVideoId(videoUrl);
+                    playlistId = getPlaylistId(videoUrl); // Check for playlist
+                    title = text.replace(videoUrl, '').trim() || (playlistId ? 'قائمة تشغيل يوتيوب' : 'فيديو يوتيوب');
+                 }
+
+                 const newTask = {
+                   telegramId: messageId,
+                   title: title,
+                   description: videoUrl ? '' : '',
+                   videoUrl: videoUrl,
+                   videoId: videoId,
+                   playlistId: playlistId,
+                   stage: 'inbox',
+                   isRecurring: false,
+                   createdAt: new Date().toISOString(),
+                   updatedAt: new Date().toISOString()
+                 };
+                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
+                 newCount++;
+              }
         }
       }
       if (maxId > (config.lastUpdateId || 0)) {
@@ -377,10 +386,13 @@ const LifeTrack = ({ onBack }) => {
                    <div key={task.id} className={`bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-0 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col items-center text-center relative group transition-all hover:-translate-y-1 overflow-hidden ${task.videoId ? 'col-span-2' : ''}`}>
                       
                       {/* 📺 VIDEO PLAYER MODE 📺 */}
-                      {task.videoId ? (
+                      {(task.videoId || task.playlistId) ? (
                         <div className="w-full aspect-video bg-black relative">
                             <iframe 
-                              src={`https://www.youtube.com/embed/${task.videoId}`} 
+                              src={task.playlistId 
+                                ? `https://www.youtube.com/embed/videoseries?list=${task.playlistId}`
+                                : `https://www.youtube.com/embed/${task.videoId}`
+                              } 
                               className="w-full h-full"
                               allowFullScreen
                               title={task.title}
@@ -479,13 +491,21 @@ const LifeTrack = ({ onBack }) => {
                       {tasks.filter(t => t.stage === col.id).map(task => (
                         <div key={task.id} draggable onDragStart={e => handleDragStart(e, task)} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-1 relative">
                             {/* 🖼️ THUMBNAIL IF VIDEO 🖼️ */}
-                            {task.videoId ? (
-                               <div className="w-full aspect-video relative group/video">
-                                  <img 
-                                    src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
-                                    className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
-                                    alt="thumbnail"
-                                  />
+                            {(task.videoId || task.playlistId) ? (
+                               <div className="w-full aspect-video relative group/video bg-slate-950">
+                                  {task.playlistId ? (
+                                     <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 flex-col gap-2">
+                                        <Layers size={32} />
+                                        <span className="text-xs font-bold uppercase tracking-widest">Playlist</span>
+                                     </div>
+                                  ) : (
+                                    <img 
+                                      src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
+                                      className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
+                                      alt="thumbnail"
+                                    />
+                                  )}
+                                  
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
                                      <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
                                         <Play size={16} fill="white" />
