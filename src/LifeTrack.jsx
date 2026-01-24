@@ -290,7 +290,27 @@ const LifeTrack = ({ onBack }) => {
   const saveTaskEdit = async (e) => {
     e.preventDefault();
     if (!editingTask) return;
-    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', editingTask.id), { title: editingTask.title, description: editingTask.description, isRecurring: editingTask.isRecurring });
+    
+    // Check completion if playlist
+    let isFinished = false;
+    if (editingTask.playlistId && editingTask.playlistLength > 0 && editingTask.watchedEpisodes?.length === parseInt(editingTask.playlistLength)) {
+        isFinished = confirm("أحسنت! لقد أتممت جميع فيديوهات السلسلة. هل تريد إنجاز الهدف وحذفه؟");
+    }
+
+    if (isFinished) {
+         await completeTask(editingTask);
+         setEditingTask(null);
+         return;
+    }
+
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', editingTask.id), { 
+        title: editingTask.title, 
+        description: editingTask.description, 
+        isRecurring: editingTask.isRecurring,
+        playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
+        watchedEpisodes: editingTask.watchedEpisodes || []
+    });
+
     if (editingTask.originalTitle !== editingTask.title && !editingTask.isSplit) {
         await updateTelegramMessage(editingTask.telegramId, editingTask.title);
     }
@@ -518,12 +538,29 @@ const LifeTrack = ({ onBack }) => {
                               {task.isRecurring && <div className="absolute top-3 left-3 text-amber-500 z-10" title="هدف مستمر"><Repeat size={14} /></div>}
                               <p className={`text-slate-200 font-medium leading-relaxed mb-4 text-sm ${!task.videoId ? 'mt-1' : ''}`}>{task.title}</p>
                               
+                              {/* 📊 PLAYLIST PROGRESS 📊 */}
+                              {task.playlistId && task.playlistLength > 0 && (
+                                 <div className="mb-4 bg-slate-800 rounded-full h-2 overflow-hidden flex w-full">
+                                    <div 
+                                      className="bg-emerald-500 h-full transition-all duration-500" 
+                                      style={{ width: `${(task.watchedEpisodes?.length || 0) / task.playlistLength * 100}%` }}
+                                    />
+                                 </div>
+                              )}
+
                               <div className="flex items-center justify-between pt-3 border-t border-slate-800">
                                 <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
                                     <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={14}/></button>
                                     <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={14}/></button>
                                 </div>
-                                <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-1 rounded-md transition"><CheckCircle size={12} /> إنجاز</button>
+                                <div className="flex items-center gap-2">
+                                  {task.playlistId && task.playlistLength > 0 && (
+                                     <span className="text-[10px] text-slate-500 font-mono">
+                                        {task.watchedEpisodes?.length || 0}/{task.playlistLength}
+                                     </span>
+                                  )}
+                                  <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-1 rounded-md transition"><CheckCircle size={12} /> إنجاز</button>
+                                </div>
                               </div>
                             </div>
                         </div>
@@ -556,6 +593,56 @@ const LifeTrack = ({ onBack }) => {
              <h3 className="font-bold text-lg text-white mb-4">تعديل الهدف</h3>
              <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-32 mb-4 resize-none" value={editingTask.title} onChange={e => setEditingTask({...editingTask, title: e.target.value})} />
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
+
+             {/* 📺 PLAYLIST TRACKER SETTINGS 📺 */}
+             {editingTask.playlistId && (
+                <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+                   <div className="flex justify-between items-center mb-4">
+                      <label className="text-xs font-bold text-slate-400 uppercase">عدد فيديوهات السلسلة</label>
+                      <input 
+                        type="number" 
+                        className="bg-slate-900 border border-slate-700 w-20 rounded text-center text-white py-1 outline-none focus:border-amber-500"
+                        value={editingTask.playlistLength || ''}
+                        onChange={e => setEditingTask({...editingTask, playlistLength: e.target.value})}
+                        placeholder="0"
+                      />
+                   </div>
+                   
+                   {editingTask.playlistLength > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase">تقدم المشاهدة</label>
+                        <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto custom-scrollbar">
+                           {Array.from({ length: parseInt(editingTask.playlistLength) }).map((_, i) => {
+                             const idx = i + 1;
+                             const isWatched = editingTask.watchedEpisodes?.includes(idx);
+                             return (
+                               <button 
+                                 type="button"
+                                 key={idx}
+                                 onClick={() => {
+                                   let newWatched = editingTask.watchedEpisodes ? [...editingTask.watchedEpisodes] : [];
+                                   if (isWatched) newWatched = newWatched.filter(n => n !== idx);
+                                   else newWatched.push(idx);
+                                   setEditingTask({...editingTask, watchedEpisodes: newWatched});
+                                 }}
+                                 className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center transition border ${
+                                   isWatched 
+                                   ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-900/50 shadow-md' 
+                                   : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500'
+                                 }`}
+                               >
+                                 {idx}
+                               </button>
+                             );
+                           })}
+                        </div>
+                        <div className="text-right text-[10px] text-slate-500 pt-1">
+                          تم مشاهدة {editingTask.watchedEpisodes?.length || 0} من {editingTask.playlistLength}
+                        </div>
+                      </div>
+                   )}
+                </div>
+             )}
              <div className="flex gap-2 mb-4">
                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-sm">حفظ</button>
                 <button type="button" onClick={() => setEditingTask(null)} className="px-4 bg-slate-800 text-white py-2 rounded-lg font-bold text-sm">إلغاء</button>
