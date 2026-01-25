@@ -619,6 +619,8 @@ const LifeTrack = ({ onBack }) => {
   const handleQueueDrop = (e) => {
      e.preventDefault();
      e.stopPropagation();
+     e.currentTarget.classList.remove('border-amber-500', 'bg-amber-950/20');
+     
      const taskId = e.dataTransfer.getData("taskId");
      if (!taskId) return;
      
@@ -635,6 +637,7 @@ const LifeTrack = ({ onBack }) => {
   const handleDragStart = (e, task) => {
     e.dataTransfer.setData("taskId", task.id);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.dropEffect = "move";
   };
   
   const handleTaskDrop = async (e, targetTask) => {
@@ -1025,11 +1028,21 @@ const LifeTrack = ({ onBack }) => {
         
         {/* 🔥 SESSION BUILDER ZONE 🔥 */}
         <div 
-           className="w-80 flex-shrink-0 h-full flex flex-col rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm"
+           className="w-80 flex-shrink-0 h-full flex flex-col rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm session-zone"
+           onDragEnter={e => {
+             e.preventDefault();
+             e.stopPropagation();
+             e.currentTarget.classList.add('border-amber-500', 'bg-amber-950/20');
+           }}
            onDragOver={e => { 
              e.preventDefault(); 
              e.stopPropagation();
              e.dataTransfer.dropEffect = 'copy'; 
+           }}
+           onDragLeave={e => {
+             if (!e.currentTarget.contains(e.relatedTarget)) {
+               e.currentTarget.classList.remove('border-amber-500', 'bg-amber-950/20');
+             }
            }}
            onDrop={handleQueueDrop}
         >
@@ -1107,7 +1120,19 @@ const LifeTrack = ({ onBack }) => {
         <div className="flex-1 overflow-x-auto h-full">
             <div className="flex gap-4 h-full min-w-[900px]">
               {Object.values(COLUMNS).map(col => (
-                <div key={col.id} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={e => handleDrop(e, col.id)} className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group`}>
+                <div 
+                  key={col.id} 
+                  onDragOver={e => { 
+                    // Only prevent default if dragging a task (not when dragging to session zone)
+                    const taskId = e.dataTransfer.getData("taskId");
+                    if (taskId) {
+                      e.preventDefault(); 
+                      e.dataTransfer.dropEffect = 'move';
+                    }
+                  }} 
+                  onDrop={e => handleDrop(e, col.id)} 
+                  className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group`}
+                >
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-2 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
@@ -1121,7 +1146,8 @@ const LifeTrack = ({ onBack }) => {
                           draggable 
                           onDragStart={e => handleDragStart(e, task)}
                           onDragOver={e => {
-                            if (e.dataTransfer.getData("taskId") && e.dataTransfer.getData("taskId") !== task.id) {
+                            const draggedTaskId = e.dataTransfer.getData("taskId");
+                            if (draggedTaskId && draggedTaskId !== task.id && draggedTaskId !== '') {
                               e.preventDefault();
                               e.stopPropagation();
                               e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
