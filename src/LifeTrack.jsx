@@ -99,6 +99,10 @@ const LifeTrack = ({ onBack }) => {
   // Group Expansion State
   const [expandedGroups, setExpandedGroups] = useState(new Set());
 
+  // Manual Add State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [manualText, setManualText] = useState('');
+
   // --- Effects ---
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => {
@@ -185,6 +189,197 @@ const LifeTrack = ({ onBack }) => {
   }, [tasks, user, config.youtubeApiKey]);
 
   // --- Logic ---
+  
+  const processImportedTask = async (text, sourceId) => {
+      if (!text) return 0;
+      let newCount = 0;
+      const ytRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g;
+      const allMatches = text.match(ytRegex);
+
+      if (!allMatches || allMatches.length === 0) {
+        // Check for list format (Goal + Subtasks)
+        const lines = text.split('\n').filter(l => l.trim());
+        const title = lines[0] ? lines[0].trim() : "New Task";
+        
+        const subTasks = [];
+        let description = '';
+        
+        // Start from 2nd line
+        for (let i = 1; i < lines.length; i++) {
+           const line = lines[i].trim();
+           if (line.startsWith('-')) {
+               // It's a subtask
+               subTasks.push({
+                   id: `${sourceId}_sub_${i}`,
+                   title: line.substring(1).trim(),
+                   completed: false
+               });
+           } else {
+               // It's part of description
+               description += (description ? '\n' : '') + line;
+           }
+        }
+        
+        const isGroup = subTasks.length > 0;
+
+        const newTask = {
+          telegramId: sourceId, // Use sourceId as ID reference 
+          title: title,
+          description: description,
+          stage: 'inbox',
+          isRecurring: false,
+          isGroup: isGroup,
+          subTasks: subTasks, 
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${sourceId}`), newTask);
+        newCount++;
+      } else if (allMatches.length === 1) {
+        // Single video or playlist
+        const videoUrl = allMatches[0];
+        const videoId = getVideoId(videoUrl);
+        const playlistId = getPlaylistId(videoUrl);
+        let title = text.replace(videoUrl, '').trim();
+        
+        // Fetch playlist title from YouTube if it's a playlist
+        let thumbnail = null;
+        if (playlistId && config.youtubeApiKey) {
+          try {
+            const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
+            });
+            if (ytRes.ok) {
+              const ytData = await ytRes.json();
+              title = title || ytData.title;
+              thumbnail = ytData.thumbnail;
+            }
+          } catch (e) {
+            console.warn('Failed to fetch playlist info', e);
+          }
+        } else if (videoId && config.youtubeApiKey) {
+          try {
+            const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
+            });
+            if (ytRes.ok) {
+              const ytData = await ytRes.json();
+              title = title || ytData.title;
+              thumbnail = ytData.thumbnail;
+            }
+          } catch (e) {
+            console.warn('Failed to fetch video info', e);
+          }
+        }
+        
+        if (!title) title = playlistId ? 'قائمة تشغيل يوتيوب' : 'فيديو يوتيوب';
+        
+        const newTask = {
+          telegramId: sourceId,
+          title: title,
+          description: '',
+          videoUrl: videoUrl,
+          videoId: videoId,
+          playlistId: playlistId,
+          thumbnail: thumbnail,
+          stage: 'inbox',
+          isRecurring: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${sourceId}`), newTask);
+        newCount++;
+      } else {
+        // Multiple playlists - split them
+        const lines = text.split('\n');
+        let currentDescription = '';
+        let taskIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const lineMatch = line.match(ytRegex);
+          
+          if (lineMatch) {
+            // This line contains a YouTube URL
+            const videoUrl = lineMatch[0];
+            const videoId = getVideoId(videoUrl);
+            const playlistId = getPlaylistId(videoUrl);
+            let title = line.replace(videoUrl, '').trim();
+            
+            // Fetch playlist title from YouTube if available
+            let thumbnail = null;
+            if (playlistId && config.youtubeApiKey) {
+              try {
+                const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
+                });
+                if (ytRes.ok) {
+                  const ytData = await ytRes.json();
+                  title = title || ytData.title;
+                  thumbnail = ytData.thumbnail;
+                }
+              } catch (e) {
+                console.warn('Failed to fetch playlist info', e);
+              }
+            } else if (videoId && config.youtubeApiKey) {
+              try {
+                const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
+                });
+                if (ytRes.ok) {
+                  const ytData = await ytRes.json();
+                  title = title || ytData.title;
+                  thumbnail = ytData.thumbnail;
+                }
+              } catch (e) {
+                console.warn('Failed to fetch video info', e);
+              }
+            }
+            
+            if (!title) title = playlistId ? `قائمة تشغيل ${taskIndex + 1}` : `فيديو ${taskIndex + 1}`;
+            
+            const subTaskId = `${sourceId}_${taskIndex}`;
+            const newTask = {
+              telegramId: sourceId,
+              title: title,
+              description: currentDescription.trim(),
+              videoUrl: videoUrl,
+              videoId: videoId,
+              playlistId: playlistId,
+              thumbnail: thumbnail,
+              stage: 'inbox',
+              isRecurring: false,
+              isSplit: true,
+              originalText: text,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
+            taskIndex++;
+            newCount++;
+            
+            // Reset description for next playlist
+            currentDescription = '';
+          } else {
+            // This is a description line (text before the URL)
+            currentDescription += (currentDescription ? '\n' : '') + line;
+          }
+        }
+      }
+      return newCount;
+  };
+
   const syncTelegram = async () => {
     if (!config.botToken) {
       alert("الرجاء ضبط إعدادات البوت أولاً");
@@ -204,202 +399,16 @@ const LifeTrack = ({ onBack }) => {
       let newCount = 0;
       let maxId = config.lastUpdateId || 0;
 
-      const ytRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g;
-
       for (const update of updates) {
         if (update.update_id > maxId) maxId = update.update_id;
         if (update.message && update.message.text) {
-           const text = update.message.text;
            const messageId = update.message.message_id;
            
            // Check if already processed
            const exists = tasks.find(t => t.telegramId === messageId);
            if (exists) continue;
            
-           // Extract all YouTube URLs
-           const allMatches = text.match(ytRegex);
-           
-           if (!allMatches || allMatches.length === 0) {
-             // Check for list format (Goal + Subtasks)
-             const lines = text.split('\n').filter(l => l.trim());
-             const title = lines[0] ? lines[0].trim() : "New Task";
-             
-             const subTasks = [];
-             let description = '';
-             
-             // Start from 2nd line
-             for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('-')) {
-                    // It's a subtask
-                    subTasks.push({
-                        id: `${messageId}_sub_${i}`,
-                        title: line.substring(1).trim(),
-                        completed: false
-                    });
-                } else {
-                    // It's part of description
-                    description += (description ? '\n' : '') + line;
-                }
-             }
-             
-             const isGroup = subTasks.length > 0;
-
-             const newTask = {
-               telegramId: messageId,
-               title: title,
-               description: description,
-               stage: 'inbox',
-               isRecurring: false,
-               isGroup: isGroup,
-               subTasks: subTasks, // Store subtasks if any
-               createdAt: new Date().toISOString(),
-               updatedAt: new Date().toISOString()
-             };
-             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
-             newCount++;
-           } else if (allMatches.length === 1) {
-             // Single video or playlist
-             const videoUrl = allMatches[0];
-             const videoId = getVideoId(videoUrl);
-             const playlistId = getPlaylistId(videoUrl);
-             let title = text.replace(videoUrl, '').trim();
-             
-             // Fetch playlist title from YouTube if it's a playlist
-             let thumbnail = null;
-             if (playlistId && config.youtubeApiKey) {
-               try {
-                 const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
-                 });
-                 if (ytRes.ok) {
-                   const ytData = await ytRes.json();
-                   title = title || ytData.title;
-                   thumbnail = ytData.thumbnail;
-                 }
-               } catch (e) {
-                 console.warn('Failed to fetch playlist info', e);
-               }
-             } else if (videoId && config.youtubeApiKey) {
-               try {
-                 const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
-                 });
-                 if (ytRes.ok) {
-                   const ytData = await ytRes.json();
-                   title = title || ytData.title;
-                   thumbnail = ytData.thumbnail;
-                 }
-               } catch (e) {
-                 console.warn('Failed to fetch video info', e);
-               }
-             }
-             
-             if (!title) title = playlistId ? 'قائمة تشغيل يوتيوب' : 'فيديو يوتيوب';
-             
-             const newTask = {
-               telegramId: messageId,
-               title: title,
-               description: '',
-               videoUrl: videoUrl,
-               videoId: videoId,
-               playlistId: playlistId,
-               thumbnail: thumbnail,
-               stage: 'inbox',
-               isRecurring: false,
-               createdAt: new Date().toISOString(),
-               updatedAt: new Date().toISOString()
-             };
-             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
-             newCount++;
-           } else {
-             // Multiple playlists - split them
-             const lines = text.split('\n');
-             let currentDescription = '';
-             let taskIndex = 0;
-             
-             for (let i = 0; i < lines.length; i++) {
-               const line = lines[i].trim();
-               if (!line) continue;
-               
-               const lineMatch = line.match(ytRegex);
-               
-               if (lineMatch) {
-                 // This line contains a YouTube URL
-                 const videoUrl = lineMatch[0];
-                 const videoId = getVideoId(videoUrl);
-                 const playlistId = getPlaylistId(videoUrl);
-                 let title = line.replace(videoUrl, '').trim();
-                 
-                 // Fetch playlist title from YouTube if available
-                 let thumbnail = null;
-                 if (playlistId && config.youtubeApiKey) {
-                   try {
-                     const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
-                       method: 'POST',
-                       headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
-                     });
-                     if (ytRes.ok) {
-                       const ytData = await ytRes.json();
-                       title = title || ytData.title;
-                       thumbnail = ytData.thumbnail;
-                     }
-                   } catch (e) {
-                     console.warn('Failed to fetch playlist info', e);
-                   }
-                 } else if (videoId && config.youtubeApiKey) {
-                   try {
-                     const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
-                       method: 'POST',
-                       headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
-                     });
-                     if (ytRes.ok) {
-                       const ytData = await ytRes.json();
-                       title = title || ytData.title;
-                       thumbnail = ytData.thumbnail;
-                     }
-                   } catch (e) {
-                     console.warn('Failed to fetch video info', e);
-                   }
-                 }
-                 
-                 if (!title) title = playlistId ? `قائمة تشغيل ${taskIndex + 1}` : `فيديو ${taskIndex + 1}`;
-                 
-                 const subTaskId = `${messageId}_${taskIndex}`;
-                 const newTask = {
-                   telegramId: messageId,
-                   title: title,
-                   description: currentDescription.trim(),
-                   videoUrl: videoUrl,
-                   videoId: videoId,
-                   playlistId: playlistId,
-                   thumbnail: thumbnail,
-                   stage: 'inbox',
-                   isRecurring: false,
-                   isSplit: true,
-                   originalText: text,
-                   createdAt: new Date().toISOString(),
-                   updatedAt: new Date().toISOString()
-                 };
-                 
-                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
-                 taskIndex++;
-                 newCount++;
-                 
-                 // Reset description for next playlist
-                 currentDescription = '';
-               } else {
-                 // This is a description line (text before the URL)
-                 currentDescription += (currentDescription ? '\n' : '') + line;
-               }
-             }
-           }
+           newCount += await processImportedTask(update.message.text, messageId);
         }
       }
       if (maxId > (config.lastUpdateId || 0)) {
@@ -412,6 +421,25 @@ const LifeTrack = ({ onBack }) => {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleManualAdd = async () => {
+      if (!manualText.trim()) return;
+      setSyncing(true); // Reusing syncing state for loading indicator
+      try {
+          const manualId = `manual_${Date.now()}`;
+          const added = await processImportedTask(manualText, manualId);
+          if (added > 0) {
+              setManualText('');
+              setShowAddModal(false);
+              alert('تمت إضافة الهدف بنجاح! 🎉');
+          }
+      } catch (e) {
+          console.error(e);
+          alert('حدث خطأ أثناء الإضافة');
+      } finally {
+          setSyncing(false);
+      }
   };
 
   const extractVideos = async (task) => {
@@ -1684,6 +1712,44 @@ const LifeTrack = ({ onBack }) => {
            </form>
         </div>
       )}
+       {/* Add Manual Task Modal */}
+       {showAddModal && (
+         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                     <Plus className="text-emerald-500" size={24}/> إضافة هدف جديد
+                  </h3>
+                  <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-slate-300"><X size={20}/></button>
+               </div>
+               
+               <p className="text-xs text-slate-400 mb-4 bg-slate-800/50 p-3 rounded border border-slate-800">
+                  يمكنك الكتابة مباشرة أو لصق روابط يوتيوب. <br/>
+                  لإنشاء قائمة مكدسة، استخدم (-) في بداية السطور الفرعية.
+               </p>
+               
+               <textarea 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white focus:border-emerald-500 outline-none h-40 mb-4 resize-none leading-relaxed" 
+                  value={manualText} 
+                  onChange={e => setManualText(e.target.value)} 
+                  placeholder={`اكتب هدفك هنا...\n\nمثال لقائمة مكدسة:\nعنوان الهدف\n- مهمة أولى\n- مهمة ثانية`}
+                  autoFocus
+               />
+               
+               <div className="flex gap-3">
+                  <button 
+                     onClick={handleManualAdd} 
+                     disabled={syncing || !manualText.trim()}
+                     className={`flex-1 font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 ${syncing || !manualText.trim() ? 'bg-slate-800 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30'}`}
+                  >
+                     {syncing ? <RefreshCw size={16} className="animate-spin"/> : <Plus size={18}/>}
+                     إضافة الهدف
+                  </button>
+               </div>
+            </div>
+         </div>
+       )}
+
     </div>
   );
 };
