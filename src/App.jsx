@@ -51,19 +51,9 @@ import {
   CheckSquare
 } from 'lucide-react';
 
-// --- Firebase Configuration ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCTaaYioZuXIIbs3G1RCfe9E5neCAtrRYY",
-  authDomain: "organizatio-79680.firebaseapp.com",
-  projectId: "organizatio-79680",
-  storageBucket: "organizatio-79680.firebasestorage.app",
-  messagingSenderId: "168221682458",
-  appId: "1:168221682458:web:d394d960fd25289906daa3"
-};
+import { db, auth } from './firebase';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// --- Constants ---
 const appId = 'meditrack-v1';
 
 // --- Constants ---
