@@ -581,7 +581,12 @@ const LifeTrack = ({ appId, onBack }) => {
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                   {/* Filter for root tasks (no groupId) */}
-                  {tasks.filter(t => t.stage === col.id && !t.groupId && !t.videoId && !t.playlistId || (t.isGroup && t.stage === col.id)).map(task => {
+                  {tasks.filter(t => {
+                    // Show groups if they match the column
+                    if (t.isGroup) return t.stage === col.id;
+                    // Show regular tasks (including videos/playlists) if they match the column and are not sub-tasks
+                    return t.stage === col.id && !t.groupId;
+                  }).map(task => {
                     // If it is a GROUP
                     if (task.isGroup) {
                        const subTasks = tasks.filter(t => t.groupId === task.id).sort((a,b) => (a.position || 0) - (b.position || 0));
