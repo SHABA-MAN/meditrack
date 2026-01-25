@@ -507,55 +507,116 @@ const MediTrack = () => {
                </div>
              ) : (
                // ALL TASKS GRID VIEW (Pure & Clean)
-               <div className="w-full h-full overflow-y-auto">
-                 <div className="flex flex-wrap justify-center items-center content-center min-h-full gap-6 pb-10">
-                   {focusQueue.map((task) => (
-                     <div 
-                       key={task.id} 
-                       className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
-                     >
-                        {/* Subject Badge */}
-                        <div className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
-                          {task.subject}
-                        </div>
+                <div className="w-full h-full overflow-y-auto p-10">
+                  <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
+                    {Object.values(
+                      focusQueue.reduce((acc, task) => {
+                        if (!acc[task.subject]) acc[task.subject] = { subject: task.subject, tasks: [] };
+                        acc[task.subject].tasks.push(task);
+                        return acc;
+                      }, {})
+                    ).map((group) => {
+                      const isStack = group.tasks.length > 1;
+                      
+                      if (isStack) {
+                        return (
+                          <div 
+                            key={group.subject} 
+                            className="bg-slate-900/60 border border-slate-700/50 backdrop-blur-xl p-6 rounded-3xl shadow-2xl flex flex-col relative group transition-all duration-300 hover:border-slate-500 hover:shadow-blue-900/20"
+                          >
+                             {/* Stack Badge Indicator */}
+                             <div className="absolute -top-3 -right-3 bg-slate-800 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border border-slate-600 shadow-lg z-10">
+                               {group.tasks.length}
+                             </div>
 
-                        {/* Title & Number */}
-                        <h2 className="text-5xl font-black text-white mb-2 tracking-tight">
-                          Lec {task.number}
-                        </h2>
-                        {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
-                        
-                        {/* Meta Info */}
-                        <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8 uppercase tracking-widest">
-                           <span>{task.stage === 0 ? 'New' : `Review ${task.stage}`}</span>
-                           {task.difficulty && (
-                             <span className={`flex items-center gap-1 ${task.difficulty === 'hard' ? 'text-red-400' : task.difficulty === 'easy' ? 'text-green-400' : ''}`}>
-                               {task.difficulty === 'hard' && <Flag size={10} fill="currentColor" />}
-                               {task.difficulty === 'hard' ? 'HARD' : task.difficulty === 'easy' ? 'EASY' : 'NORMAL'}
-                             </span>
-                           )}
-                        </div>
+                             {/* Header */}
+                             <div className="flex items-center gap-3 mb-6 border-b border-slate-700/50 pb-4">
+                                <div className={`px-3 py-1 rounded text-xs font-bold text-white shadow-sm ${SUBJECTS[group.subject]?.badge || 'bg-slate-700'}`}>
+                                  {group.subject} Collection
+                                </div>
+                                <div className="flex items-center gap-1 ml-auto text-slate-400 text-xs">
+                                  <Layers size={14} />
+                                  <span>مكدس</span>
+                                </div>
+                             </div>
 
-                        {/* Description (Minimal) */}
-                        {task.description && (
-                          <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light border-t border-slate-800 pt-4">
-                            {task.description}
-                          </p>
-                        )}
+                             {/* Stacked List */}
+                             <div className="flex-1 space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                               {group.tasks.map((task) => (
+                                 <div key={task.id} className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex justify-between items-center group/item hover:bg-slate-800 transition">
+                                    <div className="flex flex-col">
+                                       <span className="text-xl font-bold text-white">Lec {task.number}</span>
+                                       {task.title && <span className="text-xs text-slate-400">{task.title}</span>}
+                                    </div>
+                                    <button 
+                                      onClick={() => completeTask(task)}
+                                      className="w-10 h-10 rounded-full bg-slate-700 hover:bg-emerald-600 text-slate-400 hover:text-white flex items-center justify-center transition-all shadow-lg"
+                                      title="إتمام"
+                                    >
+                                       <CheckCircle size={18} />
+                                    </button>
+                                 </div>
+                               ))}
+                             </div>
+                             
+                             {/* Footer Decoration */}
+                             <div className="mt-4 pt-3 border-t border-slate-700/30 text-center">
+                               <p className="text-[10px] text-slate-500 uppercase tracking-widest">Keep Crushing It! 🔥</p>
+                             </div>
+                          </div>
+                        );
+                      }
 
-                        {/* Minimal Done Button */}
-                        <button 
-                          onClick={() => completeTask(task)}
-                          className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
-                          title="إتمام"
+                      // Single Card Render
+                      const task = group.tasks[0];
+                      return (
+                        <div 
+                          key={task.id} 
+                          className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
                         >
-                           <CheckCircle size={32} />
-                        </button>
-                        <span className="text-[10px] text-slate-600 mt-3 font-medium uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark Done</span>
-                     </div>
-                   ))}
-                 </div>
-               </div>
+                           {/* Subject Badge */}
+                           <div className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                             {task.subject}
+                           </div>
+  
+                           {/* Title & Number */}
+                           <h2 className="text-5xl font-black text-white mb-2 tracking-tight">
+                             Lec {task.number}
+                           </h2>
+                           {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
+                           
+                           {/* Meta Info */}
+                           <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8 uppercase tracking-widest">
+                              <span>{task.stage === 0 ? 'New' : `Review ${task.stage}`}</span>
+                              {task.difficulty && (
+                                <span className={`flex items-center gap-1 ${task.difficulty === 'hard' ? 'text-red-400' : task.difficulty === 'easy' ? 'text-green-400' : ''}`}>
+                                  {task.difficulty === 'hard' && <Flag size={10} fill="currentColor" />}
+                                  {task.difficulty === 'hard' ? 'HARD' : task.difficulty === 'easy' ? 'EASY' : 'NORMAL'}
+                                </span>
+                              )}
+                           </div>
+  
+                           {/* Description (Minimal) */}
+                           {task.description && (
+                             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light border-t border-slate-800 pt-4">
+                               {task.description}
+                             </p>
+                           )}
+  
+                           {/* Minimal Done Button */}
+                           <button 
+                             onClick={() => completeTask(task)}
+                             className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
+                             title="إتمام"
+                           >
+                              <CheckCircle size={32} />
+                           </button>
+                           <span className="text-[10px] text-slate-600 mt-3 font-medium uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark Done</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
              )}
           </div>
         </div>
