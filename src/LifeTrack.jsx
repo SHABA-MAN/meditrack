@@ -91,6 +91,9 @@ const LifeTrack = ({ onBack }) => {
   
   // Video Player State
   const [activeVideo, setActiveVideo] = useState(null); // ID of task currently playing video
+  
+  // YouTube Dropdown State
+  const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
 
   // --- Effects ---
   useEffect(() => {
@@ -116,6 +119,18 @@ const LifeTrack = ({ onBack }) => {
     });
     return () => { unsubConfig(); unsubTasks(); };
   }, [user]);
+  
+  // Close YouTube dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showYouTubeDropdown && !e.target.closest('.youtube-dropdown-container')) {
+        setShowYouTubeDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showYouTubeDropdown]);
 
   // --- Logic ---
   const syncTelegram = async () => {
@@ -554,6 +569,202 @@ const LifeTrack = ({ onBack }) => {
         </div>
         <div className="flex items-center gap-3">
            {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-full border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
+           
+           {/* 🎬 YOUTUBE DROPDOWN 🎬 */}
+           <div className="relative youtube-dropdown-container">
+             <button 
+               onClick={() => setShowYouTubeDropdown(!showYouTubeDropdown)}
+               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30"
+             >
+               <Youtube size={18} />
+               <span>قوائم اليوتيوب</span>
+               <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
+                 {tasks.filter(t => t.videoId || t.playlistId).length}
+               </span>
+             </button>
+             
+             {showYouTubeDropdown && (
+               <div className="absolute left-0 top-full mt-2 w-[420px] max-h-[600px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2">
+                 {/* Header */}
+                 <div className="bg-gradient-to-r from-red-950/50 to-slate-900 p-4 border-b border-slate-800 flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Youtube className="text-red-500" size={20} />
+                     <h3 className="font-bold text-white">مكتبة اليوتيوب</h3>
+                   </div>
+                   <button onClick={() => setShowYouTubeDropdown(false)} className="text-slate-500 hover:text-white transition">
+                     <X size={18} />
+                   </button>
+                 </div>
+                 
+                 {/* Content */}
+                 <div className="overflow-y-auto max-h-[520px] custom-scrollbar">
+                   {Object.values(COLUMNS).filter(col => col.id !== 'inbox').map(col => {
+                     const ytTasks = tasks.filter(t => (t.videoId || t.playlistId) && t.stage === col.id);
+                     if (ytTasks.length === 0) return null;
+                     
+                     return (
+                       <div key={col.id} className="border-b border-slate-800 last:border-0">
+                         <div className={`p-3 ${col.bg} border-l-4 ${col.color} flex items-center gap-2`}>
+                           <col.icon size={16} className="opacity-70" />
+                           <span className="font-bold text-sm text-slate-200">{col.title}</span>
+                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full ml-auto">{ytTasks.length}</span>
+                         </div>
+                         <div className="p-2 space-y-2">
+                           {ytTasks.map(task => (
+                             <div 
+                               key={task.id} 
+                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-lg overflow-hidden transition-all group cursor-pointer"
+                             >
+                               <div className="flex items-center gap-3 p-2">
+                                 {/* Thumbnail */}
+                                 {task.videoId ? (
+                                   <img 
+                                     src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
+                                     className="w-20 h-14 object-cover rounded" 
+                                     alt=""
+                                   />
+                                 ) : (
+                                   <div className="w-20 h-14 bg-slate-700 rounded flex items-center justify-center">
+                                     <Layers size={20} className="text-slate-500" />
+                                   </div>
+                                 )}
+                                 
+                                 {/* Info */}
+                                 <div className="flex-1 min-w-0">
+                                   <p className="text-xs font-medium text-slate-200 line-clamp-2 leading-relaxed">{task.title}</p>
+                                   {task.description && (
+                                     <p className="text-[10px] text-slate-500 line-clamp-1 mt-1">{task.description}</p>
+                                   )}
+                                 </div>
+                                 
+                                 {/* Actions */}
+                                 <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   {/* Move to other stages */}
+                                   <div className="flex gap-1">
+                                     {Object.values(COLUMNS).filter(c => c.id !== 'inbox' && c.id !== col.id).map(targetCol => (
+                                       <button
+                                         key={targetCol.id}
+                                         onClick={async () => {
+                                           await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), { 
+                                             stage: targetCol.id, 
+                                             updatedAt: new Date().toISOString() 
+                                           });
+                                         }}
+                                         className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                         title={targetCol.title}
+                                       >
+                                         <targetCol.icon size={12} />
+                                       </button>
+                                     ))}
+                                   </div>
+                                   {/* Add to Focus */}
+                                   <button
+                                     onClick={() => {
+                                       if (!focusQueue.find(q => q.id === task.id)) {
+                                         setFocusQueue([...focusQueue, task]);
+                                       }
+                                     }}
+                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold"
+                                     title="إضافة للتركيز"
+                                   >
+                                     <Zap size={12} />
+                                   </button>
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     );
+                   })}
+                   
+                   {/* Inbox Section */}
+                   {(() => {
+                     const inboxYtTasks = tasks.filter(t => (t.videoId || t.playlistId) && t.stage === 'inbox');
+                     if (inboxYtTasks.length === 0) return null;
+                     
+                     return (
+                       <div className="border-b border-slate-800">
+                         <div className="p-3 bg-slate-900/50 border-l-4 border-slate-500 flex items-center gap-2">
+                           <Inbox size={16} className="opacity-70" />
+                           <span className="font-bold text-sm text-slate-200">وارد الرسائل</span>
+                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full ml-auto">{inboxYtTasks.length}</span>
+                         </div>
+                         <div className="p-2 space-y-2">
+                           {inboxYtTasks.map(task => (
+                             <div 
+                               key={task.id} 
+                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-lg overflow-hidden transition-all group cursor-pointer"
+                             >
+                               <div className="flex items-center gap-3 p-2">
+                                 {task.videoId ? (
+                                   <img 
+                                     src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
+                                     className="w-20 h-14 object-cover rounded" 
+                                     alt=""
+                                   />
+                                 ) : (
+                                   <div className="w-20 h-14 bg-slate-700 rounded flex items-center justify-center">
+                                     <Layers size={20} className="text-slate-500" />
+                                   </div>
+                                 )}
+                                 
+                                 <div className="flex-1 min-w-0">
+                                   <p className="text-xs font-medium text-slate-200 line-clamp-2 leading-relaxed">{task.title}</p>
+                                   {task.description && (
+                                     <p className="text-[10px] text-slate-500 line-clamp-1 mt-1">{task.description}</p>
+                                   )}
+                                 </div>
+                                 
+                                 <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <div className="flex gap-1">
+                                     {Object.values(COLUMNS).filter(c => c.id !== 'inbox').map(targetCol => (
+                                       <button
+                                         key={targetCol.id}
+                                         onClick={async () => {
+                                           await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), { 
+                                             stage: targetCol.id, 
+                                             updatedAt: new Date().toISOString() 
+                                           });
+                                         }}
+                                         className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                         title={targetCol.title}
+                                       >
+                                         <targetCol.icon size={12} />
+                                       </button>
+                                     ))}
+                                   </div>
+                                   <button
+                                     onClick={() => {
+                                       if (!focusQueue.find(q => q.id === task.id)) {
+                                         setFocusQueue([...focusQueue, task]);
+                                       }
+                                     }}
+                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold"
+                                     title="إضافة للتركيز"
+                                   >
+                                     <Zap size={12} />
+                                   </button>
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     );
+                   })()}
+                   
+                   {tasks.filter(t => t.videoId || t.playlistId).length === 0 && (
+                     <div className="p-8 text-center text-slate-500">
+                       <Youtube size={48} className="mx-auto mb-4 opacity-30" />
+                       <p className="text-sm">لا توجد فيديوهات أو قوائم تشغيل</p>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             )}
+           </div>
+           
            <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
            <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Settings size={20}/></button>
         </div>
@@ -604,7 +815,7 @@ const LifeTrack = ({ onBack }) => {
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">{tasks.filter(t => t.stage === col.id).length}</span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                      {tasks.filter(t => t.stage === col.id).map(task => (
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId).map(task => (
                         <div key={task.id} draggable onDragStart={e => handleDragStart(e, task)} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-1 relative">
                             {/* 🖼️ THUMBNAIL IF VIDEO 🖼️ */}
                             {(task.videoId || task.playlistId) ? (
@@ -693,7 +904,13 @@ const LifeTrack = ({ onBack }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
            <form onSubmit={saveTaskEdit} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
              <h3 className="font-bold text-lg text-white mb-4">تعديل الهدف</h3>
-             <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-32 mb-4 resize-none" value={editingTask.title} onChange={e => setEditingTask({...editingTask, title: e.target.value})} />
+             
+             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">العنوان</label>
+             <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-24 mb-4 resize-none" value={editingTask.title} onChange={e => setEditingTask({...editingTask, title: e.target.value})} placeholder="عنوان الهدف" />
+             
+             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">الوصف (اختياري)</label>
+             <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-20 mb-4 resize-none" value={editingTask.description || ''} onChange={e => setEditingTask({...editingTask, description: e.target.value})} placeholder="وصف الهدف أو ملاحظات" />
+             
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
 
              {/* 📺 PLAYLIST TRACKER SETTINGS 📺 */}
