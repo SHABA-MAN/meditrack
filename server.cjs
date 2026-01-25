@@ -81,13 +81,50 @@ app.post('/api/youtube/playlistInfo', async (req, res) => {
     
     if (response.data.items && response.data.items.length > 0) {
       const playlist = response.data.items[0];
+      const thumbnails = playlist.snippet.thumbnails;
+      const thumbnail = thumbnails.high?.url || thumbnails.medium?.url || thumbnails.default?.url;
+      
       res.json({
         title: playlist.snippet.title,
         description: playlist.snippet.description,
-        itemCount: playlist.contentDetails.itemCount
+        itemCount: playlist.contentDetails.itemCount,
+        thumbnail: thumbnail
       });
     } else {
       res.status(404).json({ error: 'Playlist not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Proxy to get YouTube video info
+app.post('/api/youtube/videoInfo', async (req, res) => {
+  const { videoId, apiKey } = req.body;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'YouTube API Key is required' });
+  }
+  try {
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+      params: {
+        part: 'snippet',
+        id: videoId,
+        key: apiKey
+      }
+    });
+    
+    if (response.data.items && response.data.items.length > 0) {
+      const video = response.data.items[0];
+      const thumbnails = video.snippet.thumbnails;
+      const thumbnail = thumbnails.high?.url || thumbnails.medium?.url || thumbnails.default?.url;
+      
+      res.json({
+        title: video.snippet.title,
+        description: video.snippet.description,
+        thumbnail: thumbnail
+      });
+    } else {
+      res.status(404).json({ error: 'Video not found' });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
