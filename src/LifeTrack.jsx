@@ -636,8 +636,7 @@ const LifeTrack = ({ onBack }) => {
   
   const handleDragStart = (e, task) => {
     e.dataTransfer.setData("taskId", task.id);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.effectAllowed = "all"; // Allow both move and copy
   };
   
   const handleTaskDrop = async (e, targetTask) => {
@@ -1030,8 +1029,7 @@ const LifeTrack = ({ onBack }) => {
         <div 
            className="w-80 flex-shrink-0 h-full flex flex-col rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm session-zone"
            onDragEnter={e => {
-             e.preventDefault();
-             e.stopPropagation();
+             // Don't prevent default here, just add visual feedback
              e.currentTarget.classList.add('border-amber-500', 'bg-amber-950/20');
            }}
            onDragOver={e => { 
