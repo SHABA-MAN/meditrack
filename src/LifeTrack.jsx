@@ -220,13 +220,39 @@ const LifeTrack = ({ onBack }) => {
            const allMatches = text.match(ytRegex);
            
            if (!allMatches || allMatches.length === 0) {
-             // Normal text message
+             // Check for list format (Goal + Subtasks)
+             const lines = text.split('\n').filter(l => l.trim());
+             const title = lines[0] ? lines[0].trim() : "New Task";
+             
+             const subTasks = [];
+             let description = '';
+             
+             // Start from 2nd line
+             for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('-')) {
+                    // It's a subtask
+                    subTasks.push({
+                        id: `${messageId}_sub_${i}`,
+                        title: line.substring(1).trim(),
+                        completed: false
+                    });
+                } else {
+                    // It's part of description
+                    description += (description ? '\n' : '') + line;
+                }
+             }
+             
+             const isGroup = subTasks.length > 0;
+
              const newTask = {
                telegramId: messageId,
-               title: text,
-               description: '',
+               title: title,
+               description: description,
                stage: 'inbox',
                isRecurring: false,
+               isGroup: isGroup,
+               subTasks: subTasks, // Store subtasks if any
                createdAt: new Date().toISOString(),
                updatedAt: new Date().toISOString()
              };
