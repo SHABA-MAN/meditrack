@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Youtube, Maximize2, Minimize2, CheckCircle, Clock } from 'lucide-react';
-import ReactPlayer from 'react-player/youtube';
+import ReactPlayer from 'react-player';
 
 const FocusMode = ({ 
   isOpen, 

@@ -28,7 +28,7 @@ import {
   updateDoc, 
   deleteDoc 
 } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from './firebase'; // Ensure this path is correct based on your project structure
 import { getVideoId, getPlaylistId, ytRegex } from './utils/youtube';
 
@@ -52,7 +52,6 @@ const LifeTrack = ({ appId, onBack }) => {
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [config, setConfig] = useState({ botToken: '', chatId: '', youtubeApiKey: '' });
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [serverError, setServerError] = useState(false);
 
@@ -60,7 +59,6 @@ const LifeTrack = ({ appId, onBack }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [focusQueue, setFocusQueue] = useState([]);
-  const [isFreeFocus, setIsFreeFocus] = useState(false);
   const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
   
   // Edit State
@@ -73,7 +71,6 @@ const LifeTrack = ({ appId, onBack }) => {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
-      if (!u) setLoading(false);
     });
     return () => unsub();
   }, []);
@@ -83,7 +80,6 @@ const LifeTrack = ({ appId, onBack }) => {
     const unsubConfig = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'telegram'), (snap) => {
       if (snap.exists()) setConfig(snap.data());
       else setShowSettings(true);
-      setLoading(false);
     });
     const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'));
     const unsubTasks = onSnapshot(q, (snap) => {
@@ -92,7 +88,7 @@ const LifeTrack = ({ appId, onBack }) => {
       setTasks(list);
     });
     return () => { unsubConfig(); unsubTasks(); };
-  }, [user]);
+  }, [user, appId]);
 
   // Close YouTube dropdown when clicking outside
   useEffect(() => {
@@ -152,7 +148,7 @@ const LifeTrack = ({ appId, onBack }) => {
     };
     
     fetchThumbnails();
-  }, [tasks, user, config.youtubeApiKey]);
+  }, [tasks, user, config.youtubeApiKey, appId]);
 
   // --- Logic ---
   const syncTelegram = async () => {
@@ -421,7 +417,6 @@ const LifeTrack = ({ appId, onBack }) => {
     if (!confirm(`سيتم تحويل "${task.title}" إلى مجموعة واستخراج الفيديوهات منها. هل أنت متأكد؟`)) return;
     
     // Simple loading indication
-    const originalBtnText = document.activeElement.innerText;
     document.activeElement.innerText = "جاري الاستخراج...";
     document.activeElement.disabled = true;
 
@@ -481,17 +476,14 @@ const LifeTrack = ({ appId, onBack }) => {
   const startSession = () => {
     if(focusQueue.length === 0) return;
     setFocusMode(true);
-    setIsFreeFocus(false);
   };
   
   const startFreeFocus = () => {
     setFocusMode(true);
-    setIsFreeFocus(true);
   };
 
   const closeFocusMode = () => {
     setFocusMode(false);
-    setIsFreeFocus(false);
     setActiveVideo(null);
   };
 
@@ -555,7 +547,7 @@ const LifeTrack = ({ appId, onBack }) => {
                     <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full">{focusQueue.length}</span>
                  </div>
                  <div className="flex-1 overflow-y-auto space-y-2 mb-4 pr-1 custom-scrollbar">
-                    {focusQueue.map((task, i) => (
+                    {focusQueue.map((task) => (
                        <div key={task.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex justify-between items-center group">
                           <div>
                              <p className="font-bold text-sm text-slate-200 line-clamp-1">{task.title}</p>
