@@ -625,9 +625,32 @@ const LifeTrack = ({ onBack }) => {
      if (!taskId) return;
      
      const task = tasks.find(t => t.id === taskId);
-     if (task && !focusQueue.find(q => q.id === taskId)) {
-        setFocusQueue([...focusQueue, task]);
+     if (!task || focusQueue.find(q => q.id === taskId)) return;
+     
+     // Add the main task
+     const newQueue = [...focusQueue, task];
+     
+     // If it's a group, add all subtasks as well
+     if (task.isGroup && task.subTasks && task.subTasks.length > 0) {
+       task.subTasks.forEach(subTask => {
+         // Find the actual task if it exists, or create a virtual one
+         const subTaskObj = tasks.find(t => t.id === subTask.id);
+         if (subTaskObj && !newQueue.find(q => q.id === subTask.id)) {
+           newQueue.push(subTaskObj);
+         } else if (!subTaskObj) {
+           // Create a virtual task from subtask data
+           newQueue.push({
+             id: subTask.id || `subtask-${Date.now()}-${Math.random()}`,
+             title: subTask.title,
+             completed: subTask.completed,
+             isSubTask: true,
+             parentGroupId: task.id
+           });
+         }
+       });
      }
+     
+     setFocusQueue(newQueue);
   };
 
   const removeFromQueue = (id) => {
@@ -898,7 +921,17 @@ const LifeTrack = ({ onBack }) => {
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        if (!focusQueue.find(q => q.id === task.id)) {
-                                         setFocusQueue([...focusQueue, task]);
+                                         let newQueue = [...focusQueue, task];
+                                         // Add subtasks if it's a group
+                                         if (task.isGroup && task.subTasks && task.subTasks.length > 0) {
+                                           task.subTasks.forEach(subTask => {
+                                             const subTaskObj = tasks.find(t => t.id === subTask.id);
+                                             if (subTaskObj && !newQueue.find(q => q.id === subTask.id)) {
+                                               newQueue.push(subTaskObj);
+                                             }
+                                           });
+                                         }
+                                         setFocusQueue(newQueue);
                                        }
                                      }}
                                      className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold mt-1"
@@ -908,6 +941,36 @@ const LifeTrack = ({ onBack }) => {
                                    </button>
                                  </div>
                                </div>
+                               
+                               {/* Show Subtasks if group */}
+                               {task.isGroup && task.subTasks && task.subTasks.length > 0 && (
+                                 <div className="px-2 pb-2 space-y-1 border-t border-slate-700 pt-2 mt-1">
+                                   <div className="text-[10px] text-purple-400 font-bold mb-1 flex items-center gap-1">
+                                     <Layers size={10} />
+                                     الأهداف الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
+                                   </div>
+                                   {task.subTasks.map((subTask, idx) => {
+                                     const subTaskObj = tasks.find(t => t.id === subTask.id);
+                                     return (
+                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded">
+                                         <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                                           subTask.completed 
+                                             ? 'bg-emerald-600 border-emerald-500' 
+                                             : 'border-slate-600'
+                                         }`}>
+                                           {subTask.completed && <CheckCircle size={8} className="text-white" />}
+                                         </div>
+                                         <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                                           {subTask.title || `هدف فرعي ${idx + 1}`}
+                                         </span>
+                                         {subTaskObj && (subTaskObj.videoId || subTaskObj.playlistId) && (
+                                           <Youtube size={10} className="text-red-500 flex-shrink-0" />
+                                         )}
+                                       </div>
+                                     );
+                                   })}
+                                 </div>
+                               )}
                              </div>
                            ))}
                          </div>
@@ -990,7 +1053,17 @@ const LifeTrack = ({ onBack }) => {
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        if (!focusQueue.find(q => q.id === task.id)) {
-                                         setFocusQueue([...focusQueue, task]);
+                                         let newQueue = [...focusQueue, task];
+                                         // Add subtasks if it's a group
+                                         if (task.isGroup && task.subTasks && task.subTasks.length > 0) {
+                                           task.subTasks.forEach(subTask => {
+                                             const subTaskObj = tasks.find(t => t.id === subTask.id);
+                                             if (subTaskObj && !newQueue.find(q => q.id === subTask.id)) {
+                                               newQueue.push(subTaskObj);
+                                             }
+                                           });
+                                         }
+                                         setFocusQueue(newQueue);
                                        }
                                      }}
                                      className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold mt-1"
@@ -1000,6 +1073,36 @@ const LifeTrack = ({ onBack }) => {
                                    </button>
                                  </div>
                                </div>
+                               
+                               {/* Show Subtasks if group */}
+                               {task.isGroup && task.subTasks && task.subTasks.length > 0 && (
+                                 <div className="px-2 pb-2 space-y-1 border-t border-slate-700 pt-2 mt-1">
+                                   <div className="text-[10px] text-purple-400 font-bold mb-1 flex items-center gap-1">
+                                     <Layers size={10} />
+                                     الأهداف الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
+                                   </div>
+                                   {task.subTasks.map((subTask, idx) => {
+                                     const subTaskObj = tasks.find(t => t.id === subTask.id);
+                                     return (
+                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded">
+                                         <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                                           subTask.completed 
+                                             ? 'bg-emerald-600 border-emerald-500' 
+                                             : 'border-slate-600'
+                                         }`}>
+                                           {subTask.completed && <CheckCircle size={8} className="text-white" />}
+                                         </div>
+                                         <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                                           {subTask.title || `هدف فرعي ${idx + 1}`}
+                                         </span>
+                                         {subTaskObj && (subTaskObj.videoId || subTaskObj.playlistId) && (
+                                           <Youtube size={10} className="text-red-500 flex-shrink-0" />
+                                         )}
+                                       </div>
+                                     );
+                                   })}
+                                 </div>
+                               )}
                              </div>
                            ))}
                          </div>
@@ -1068,30 +1171,37 @@ const LifeTrack = ({ onBack }) => {
                         {focusQueue.length}
                      </span>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-2 mb-3 custom-scrollbar">
-                     {focusQueue.map(q => (
-                       <div 
-                         key={q.id} 
-                         className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 hover:border-amber-500/50 flex items-start gap-2.5 transition group/item"
-                       >
-                          {q.videoId && (
-                            <img 
-                              src={`https://img.youtube.com/vi/${q.videoId}/default.jpg`} 
-                              className="w-14 h-10 object-cover rounded flex-shrink-0" 
-                              alt="" 
-                            />
-                          )}
-                          <p className="text-xs font-medium text-slate-200 line-clamp-2 flex-1 leading-relaxed">
-                            {q.title}
-                          </p>
-                          <button 
-                            onClick={() => removeFromQueue(q.id)} 
-                            className="text-slate-500 hover:text-red-400 transition flex-shrink-0 opacity-0 group-hover/item:opacity-100"
+                  <div className="flex-1 overflow-y-auto mb-3 custom-scrollbar">
+                     <div className="grid grid-cols-3 gap-2">
+                        {focusQueue.map(q => (
+                          <div 
+                            key={q.id} 
+                            className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
                           >
-                            <X size={14}/>
-                          </button>
-                       </div>
-                     ))}
+                             {q.videoId && (
+                               <img 
+                                 src={`https://img.youtube.com/vi/${q.videoId}/default.jpg`} 
+                                 className="w-full h-16 object-cover rounded mb-1.5" 
+                                 alt="" 
+                               />
+                             )}
+                             {q.isSubTask && (
+                               <div className="absolute top-1 right-1 bg-purple-600/80 text-white text-[8px] px-1 py-0.5 rounded">
+                                 <Layers size={8} />
+                               </div>
+                             )}
+                             <p className="text-[10px] font-medium text-slate-200 line-clamp-3 flex-1 leading-tight">
+                               {q.title}
+                             </p>
+                             <button 
+                               onClick={() => removeFromQueue(q.id)} 
+                               className="absolute top-1 left-1 text-slate-500 hover:text-red-400 transition opacity-0 group-hover/item:opacity-100 bg-slate-900/80 rounded p-0.5"
+                             >
+                               <X size={10}/>
+                             </button>
+                          </div>
+                        ))}
+                     </div>
                   </div>
                   <div className="flex gap-2">
                      <button 
