@@ -76,7 +76,7 @@ const SUBJECTS = {
 
 const INTERVALS = [1, 2, 4, 7];
 
-const MediTrack = ({ onSwitchToLifeTrack }) => {
+const MediTrack = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
@@ -669,9 +669,6 @@ const MediTrack = ({ onSwitchToLifeTrack }) => {
         </div>
         
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          {onSwitchToLifeTrack && (
-            <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={16} className="text-amber-500" /> LifeTrack</button>
-          )}
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -684,7 +681,7 @@ const MediTrack = ({ onSwitchToLifeTrack }) => {
         
         {/* COLUMN 1: DROP ZONE (Queue System) */}
         <div 
-          onDragOver={handleDragOver}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
           className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col p-6 text-center cursor-pointer group hover:scale-[1.01]"
         >
