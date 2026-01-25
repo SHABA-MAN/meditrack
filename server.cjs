@@ -64,6 +64,36 @@ app.post('/api/telegram/sendMessage', async (req, res) => {
     }
   });
 
+// Proxy to get YouTube playlist info
+app.post('/api/youtube/playlistInfo', async (req, res) => {
+  const { playlistId, apiKey } = req.body;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'YouTube API Key is required' });
+  }
+  try {
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/playlists', {
+      params: {
+        part: 'snippet,contentDetails',
+        id: playlistId,
+        key: apiKey
+      }
+    });
+    
+    if (response.data.items && response.data.items.length > 0) {
+      const playlist = response.data.items[0];
+      res.json({
+        title: playlist.snippet.title,
+        description: playlist.snippet.description,
+        itemCount: playlist.contentDetails.itemCount
+      });
+    } else {
+      res.status(404).json({ error: 'Playlist not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Telegram Proxy Server running on port ${port}`);
 });

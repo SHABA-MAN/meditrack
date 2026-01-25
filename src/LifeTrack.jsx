@@ -76,7 +76,7 @@ const LifeTrack = ({ onBack }) => {
   // Core State
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [config, setConfig] = useState({ botToken: '', chatId: '' });
+  const [config, setConfig] = useState({ botToken: '', chatId: '', youtubeApiKey: '' });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [serverError, setServerError] = useState(false);
@@ -144,38 +144,133 @@ const LifeTrack = ({ onBack }) => {
         if (update.message && update.message.text) {
            const text = update.message.text;
            const messageId = update.message.message_id;
-                      // 📩 Case: Single Video, Playlist or Normal Message
-              const exists = tasks.find(t => t.telegramId === messageId && !t.isSplit);
-              if (!exists) {
-                 // Check if it's a single video or playlist
-                 const singleMatch = text.match(ytRegex);
-                 let videoId = null;
-                 let playlistId = null;
-                 let videoUrl = null;
-                 let title = text;
-
-                 if (singleMatch) {
-                    videoUrl = singleMatch[0];
-                    videoId = getVideoId(videoUrl);
-                    playlistId = getPlaylistId(videoUrl); // Check for playlist
-                    title = text.replace(videoUrl, '').trim() || (playlistId ? 'قائمة تشغيل يوتيوب' : 'فيديو يوتيوب');
+           
+           // Check if already processed
+           const exists = tasks.find(t => t.telegramId === messageId);
+           if (exists) continue;
+           
+           // Extract all YouTube URLs
+           const allMatches = text.match(ytRegex);
+           
+           if (!allMatches || allMatches.length === 0) {
+             // Normal text message
+             const newTask = {
+               telegramId: messageId,
+               title: text,
+               description: '',
+               stage: 'inbox',
+               isRecurring: false,
+               createdAt: new Date().toISOString(),
+               updatedAt: new Date().toISOString()
+             };
+             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
+             newCount++;
+           } else if (allMatches.length === 1) {
+             // Single video or playlist
+             const videoUrl = allMatches[0];
+             const videoId = getVideoId(videoUrl);
+             const playlistId = getPlaylistId(videoUrl);
+             let title = text.replace(videoUrl, '').trim();
+             
+             // Fetch playlist title from YouTube if it's a playlist
+             if (playlistId && config.youtubeApiKey) {
+               try {
+                 const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
+                 });
+                 if (ytRes.ok) {
+                   const ytData = await ytRes.json();
+                   title = title || ytData.title;
                  }
-
+               } catch (e) {
+                 console.warn('Failed to fetch playlist info', e);
+               }
+             }
+             
+             if (!title) title = playlistId ? 'قائمة تشغيل يوتيوب' : 'فيديو يوتيوب';
+             
+             const newTask = {
+               telegramId: messageId,
+               title: title,
+               description: '',
+               videoUrl: videoUrl,
+               videoId: videoId,
+               playlistId: playlistId,
+               stage: 'inbox',
+               isRecurring: false,
+               createdAt: new Date().toISOString(),
+               updatedAt: new Date().toISOString()
+             };
+             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
+             newCount++;
+           } else {
+             // Multiple playlists - split them
+             const lines = text.split('\n');
+             let currentDescription = '';
+             let taskIndex = 0;
+             
+             for (let i = 0; i < lines.length; i++) {
+               const line = lines[i].trim();
+               if (!line) continue;
+               
+               const lineMatch = line.match(ytRegex);
+               
+               if (lineMatch) {
+                 // This line contains a YouTube URL
+                 const videoUrl = lineMatch[0];
+                 const videoId = getVideoId(videoUrl);
+                 const playlistId = getPlaylistId(videoUrl);
+                 let title = line.replace(videoUrl, '').trim();
+                 
+                 // Fetch playlist title from YouTube if available
+                 if (playlistId && config.youtubeApiKey) {
+                   try {
+                     const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
+                     });
+                     if (ytRes.ok) {
+                       const ytData = await ytRes.json();
+                       title = title || ytData.title;
+                     }
+                   } catch (e) {
+                     console.warn('Failed to fetch playlist info', e);
+                   }
+                 }
+                 
+                 if (!title) title = playlistId ? `قائمة تشغيل ${taskIndex + 1}` : `فيديو ${taskIndex + 1}`;
+                 
+                 const subTaskId = `${messageId}_${taskIndex}`;
                  const newTask = {
                    telegramId: messageId,
                    title: title,
-                   description: videoUrl ? '' : '',
+                   description: currentDescription.trim(),
                    videoUrl: videoUrl,
                    videoId: videoId,
                    playlistId: playlistId,
                    stage: 'inbox',
                    isRecurring: false,
+                   isSplit: true,
+                   originalText: text,
                    createdAt: new Date().toISOString(),
                    updatedAt: new Date().toISOString()
                  };
-                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `${messageId}`), newTask);
+                 
+                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
+                 taskIndex++;
                  newCount++;
-              }
+                 
+                 // Reset description for next playlist
+                 currentDescription = '';
+               } else {
+                 // This is a description line (text before the URL)
+                 currentDescription += (currentDescription ? '\n' : '') + line;
+               }
+             }
+           }
         }
       }
       if (maxId > (config.lastUpdateId || 0)) {
@@ -426,7 +521,7 @@ const LifeTrack = ({ onBack }) => {
                           {task.videoId && <Youtube className="text-red-600" size={24}/>}
                           {task.title}
                         </h2>
-                        {task.description && !task.videoId && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap dir-ltr">{task.description}</p>}
+                        {task.description && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap text-center">{task.description}</p>}
                         
                         <div className="mt-4 flex justify-center gap-4">
                            <button onClick={async () => {
@@ -537,7 +632,12 @@ const LifeTrack = ({ onBack }) => {
 
                             <div className="p-4">
                               {task.isRecurring && <div className="absolute top-3 left-3 text-amber-500 z-10" title="هدف مستمر"><Repeat size={14} /></div>}
-                              <p className={`text-slate-200 font-medium leading-relaxed mb-4 text-sm ${!task.videoId ? 'mt-1' : ''}`}>{task.title}</p>
+                              <p className={`text-slate-200 font-medium leading-relaxed mb-2 text-sm ${!task.videoId ? 'mt-1' : ''}`}>{task.title}</p>
+                              
+                              {/* 📝 DESCRIPTION 📝 */}
+                              {task.description && (
+                                <p className="text-slate-400 text-xs leading-relaxed mb-4 whitespace-pre-wrap">{task.description}</p>
+                              )}
                               
                               {/* 📊 PLAYLIST PROGRESS 📊 */}
                               {task.playlistId && task.playlistLength > 0 && (
@@ -578,10 +678,11 @@ const LifeTrack = ({ onBack }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
            <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl w-full max-w-md shadow-2xl">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white"><Settings className="text-amber-500"/> إعدادات الربط</h2>
-              <div className="space-y-4 mb-6">
-                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">Telegram Bot Token</label><input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none" value={config.botToken} onChange={e => setConfig({...config, botToken: e.target.value})} /></div>
-                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">Chat ID</label><input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none" value={config.chatId} onChange={e => setConfig({...config, chatId: e.target.value})} /></div>
-              </div>
+               <div className="space-y-4 mb-6">
+                  <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">Telegram Bot Token</label><input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none" value={config.botToken} onChange={e => setConfig({...config, botToken: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">Chat ID</label><input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none" value={config.chatId} onChange={e => setConfig({...config, chatId: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">YouTube API Key (اختياري)</label><input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none" value={config.youtubeApiKey || ''} onChange={e => setConfig({...config, youtubeApiKey: e.target.value})} placeholder="لجلب أسماء القوائم تلقائياً" /></div>
+               </div>
               <div className="flex gap-3"><button onClick={async () => { if (!user) return; await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'telegram'), config); setShowSettings(false); alert("تم الحفظ!"); }} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transition">حفظ الإعدادات</button><button onClick={() => setShowSettings(false)} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">إغلاق</button></div>
            </div>
         </div>
