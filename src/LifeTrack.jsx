@@ -618,7 +618,10 @@ const LifeTrack = ({ onBack }) => {
 
   const handleQueueDrop = (e) => {
      e.preventDefault();
+     e.stopPropagation();
      const taskId = e.dataTransfer.getData("taskId");
+     if (!taskId) return;
+     
      const task = tasks.find(t => t.id === taskId);
      if (task && !focusQueue.find(q => q.id === taskId)) {
         setFocusQueue([...focusQueue, task]);
@@ -1023,7 +1026,11 @@ const LifeTrack = ({ onBack }) => {
         {/* 🔥 SESSION BUILDER ZONE 🔥 */}
         <div 
            className="w-80 flex-shrink-0 h-full flex flex-col rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm"
-           onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+           onDragOver={e => { 
+             e.preventDefault(); 
+             e.stopPropagation();
+             e.dataTransfer.dropEffect = 'copy'; 
+           }}
            onDrop={handleQueueDrop}
         >
             {focusQueue.length === 0 ? (
@@ -1114,9 +1121,9 @@ const LifeTrack = ({ onBack }) => {
                           draggable 
                           onDragStart={e => handleDragStart(e, task)}
                           onDragOver={e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (e.dataTransfer.getData("taskId") !== task.id) {
+                            if (e.dataTransfer.getData("taskId") && e.dataTransfer.getData("taskId") !== task.id) {
+                              e.preventDefault();
+                              e.stopPropagation();
                               e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
                             }
                           }}
