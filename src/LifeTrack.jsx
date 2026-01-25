@@ -627,30 +627,8 @@ const LifeTrack = ({ onBack }) => {
      const task = tasks.find(t => t.id === taskId);
      if (!task || focusQueue.find(q => q.id === taskId)) return;
      
-     // Add the main task
-     const newQueue = [...focusQueue, task];
-     
-     // If it's a group, add all subtasks as well
-     if (task.isGroup && task.subTasks && task.subTasks.length > 0) {
-       task.subTasks.forEach(subTask => {
-         // Find the actual task if it exists, or create a virtual one
-         const subTaskObj = tasks.find(t => t.id === subTask.id);
-         if (subTaskObj && !newQueue.find(q => q.id === subTask.id)) {
-           newQueue.push(subTaskObj);
-         } else if (!subTaskObj) {
-           // Create a virtual task from subtask data
-           newQueue.push({
-             id: subTask.id || `subtask-${Date.now()}-${Math.random()}`,
-             title: subTask.title,
-             completed: subTask.completed,
-             isSubTask: true,
-             parentGroupId: task.id
-           });
-         }
-       });
-     }
-     
-     setFocusQueue(newQueue);
+     // Add the task directly (don't flatten groups)
+     setFocusQueue([...focusQueue, task]);
   };
 
   const removeFromQueue = (id) => {
@@ -764,9 +742,9 @@ const LifeTrack = ({ onBack }) => {
                  <button onClick={closeFocusMode} className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-full text-sm font-bold transition-all duration-300">إنهاء الجلسة</button>
                </div>
              ) : (
-               <div className="flex flex-wrap justify-center content-start gap-6 pb-10 max-w-7xl mx-auto">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10 max-w-7xl mx-auto items-start">
                  {focusQueue.map((task) => (
-                   <div key={task.id} className={`bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-0 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col items-center text-center relative group transition-all hover:-translate-y-1 overflow-hidden ${task.videoId ? 'col-span-2' : ''}`}>
+                   <div key={task.id} className={`bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-0 rounded-2xl shadow-2xl w-full flex flex-col items-center text-center relative group transition-all hover:-translate-y-1 overflow-hidden ${task.videoId ? 'col-span-2' : ''} ${task.isGroup ? 'row-span-2' : ''}`}>
                       
                       {/* 📺 VIDEO PLAYER MODE 📺 */}
                       {(task.videoId || task.playlistId) ? (
@@ -790,11 +768,57 @@ const LifeTrack = ({ onBack }) => {
                         </h2>
                         {task.description && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap text-center">{task.description}</p>}
                         
-                        <div className="mt-4 flex justify-center gap-4">
+                        <div className="mt-4 flex flex-col items-center w-full gap-4">
+                           {/* 📜 SUBTASKS LIST 📜 */}
+                           {task.isGroup && task.subTasks && task.subTasks.length > 0 && (
+                             <div className="w-full bg-slate-800/30 rounded-xl p-4 border border-slate-700/50 text-right mb-2">
+                               <div className="text-xs font-bold text-purple-400 mb-3 flex items-center gap-2 border-b border-purple-500/10 pb-2">
+                                  <Layers size={14} />
+                                  المهام الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
+                               </div>
+                               <div className="space-y-2 text-right">
+                                 {task.subTasks.map((subTask, idx) => (
+                                   <div key={subTask.id || idx} className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg hover:bg-slate-900 transition group/sub">
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          const newSubTasks = [...task.subTasks];
+                                          newSubTasks[idx].completed = !newSubTasks[idx].completed;
+                                          
+                                          // Update locally first for speed
+                                          const newTasks = tasks.map(t => t.id === task.id ? {...t, subTasks: newSubTasks} : t);
+                                          setTasks(newTasks);
+                                          
+                                          // Update in Focus Queue as well
+                                          const newQueue = focusQueue.map(q => q.id === task.id ? {...q, subTasks: newSubTasks} : q);
+                                          setFocusQueue(newQueue);
+
+                                          await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
+                                            subTasks: newSubTasks,
+                                            updatedAt: new Date().toISOString()
+                                          });
+                                        }}
+                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 ${
+                                          subTask.completed 
+                                            ? 'bg-emerald-600 border-emerald-500' 
+                                            : 'border-slate-500 hover:border-emerald-500'
+                                        }`}
+                                      >
+                                        {subTask.completed && <CheckCircle size={12} className="text-white" />}
+                                      </button>
+                                      <span className={`flex-1 text-sm text-right ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-200 group-hover/sub:text-white'}`}>
+                                        {subTask.title || `هدف فرعي ${idx + 1}`}
+                                      </span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+
                            <button onClick={async () => {
-                               await completeTask(task);
-                               removeFromQueue(task.id);
-                               if(focusQueue.length <= 1) closeFocusMode();
+                                await completeTask(task);
+                                removeFromQueue(task.id);
+                                if(focusQueue.length <= 1) closeFocusMode();
                            }} className="px-6 py-2 bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white border border-emerald-900 rounded-full font-bold transition flex items-center gap-2">
                              <CheckCircle size={18} /> تم الإنجاز
                            </button>
