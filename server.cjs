@@ -131,6 +131,54 @@ app.post('/api/youtube/videoInfo', async (req, res) => {
   }
 });
 
+// Proxy to get YouTube playlist items (videos in playlist)
+app.post('/api/youtube/playlistItems', async (req, res) => {
+  const { playlistId, apiKey, maxResults = 50 } = req.body;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'YouTube API Key is required' });
+  }
+  if (!playlistId) {
+    return res.status(400).json({ error: 'Playlist ID is required' });
+  }
+  try {
+    const allVideos = [];
+    let nextPageToken = null;
+    
+    do {
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+        params: {
+          part: 'snippet,contentDetails',
+          playlistId: playlistId,
+          maxResults: Math.min(maxResults, 50),
+          pageToken: nextPageToken,
+          key: apiKey
+        }
+      });
+      
+      if (response.data.items) {
+        const videos = response.data.items.map(item => {
+          const thumbnails = item.snippet.thumbnails;
+          const thumbnail = thumbnails.high?.url || thumbnails.medium?.url || thumbnails.default?.url;
+          return {
+            videoId: item.contentDetails.videoId,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            thumbnail: thumbnail,
+            position: item.snippet.position
+          };
+        });
+        allVideos.push(...videos);
+      }
+      
+      nextPageToken = response.data.nextPageToken;
+    } while (nextPageToken && allVideos.length < maxResults);
+    
+    res.json({ videos: allVideos });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Telegram Proxy Server running on port ${port}`);
 });

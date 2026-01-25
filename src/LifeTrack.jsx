@@ -32,7 +32,9 @@ import {
   X,
   Layers,
   Coffee,
-  Youtube
+  Youtube,
+  Plus,
+  Minus
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -88,9 +90,6 @@ const LifeTrack = ({ onBack }) => {
   const [isFocusModeActive, setIsFocusModeActive] = useState(false);
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false);
-  
-  // Video Player State
-  const [activeVideo, setActiveVideo] = useState(null); // ID of task currently playing video
   
   // YouTube Dropdown State
   const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
@@ -406,7 +405,7 @@ const LifeTrack = ({ onBack }) => {
        if (lineMatch) {
          const url = lineMatch[0];
          const videoId = getVideoId(url);
-         let title = line.replace(url, '').replace(/^[\d\-\.\)]+\s*/, '').trim(); 
+         let title = line.replace(url, '').replace(/^[\d\-.)]+\s*/, '').trim(); 
          if (!title) title = `فيديو ${vidIndex + 1}`;
 
          const subTaskId = `${task.telegramId}_${vidIndex}`;
@@ -433,6 +432,82 @@ const LifeTrack = ({ onBack }) => {
      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
      setEditingTask(null);
      alert("تم تقسيم السلسلة بنجاح! 🎉");
+  };
+
+  const convertPlaylistToVideos = async (task) => {
+    if (!task.playlistId) {
+      alert("هذا الهدف ليس قائمة تشغيل يوتيوب");
+      return;
+    }
+    
+    if (!config.youtubeApiKey) {
+      alert("الرجاء إضافة YouTube API Key في الإعدادات أولاً");
+      setShowSettings(true);
+      return;
+    }
+    
+    if (!confirm(`هل تريد تحويل قائمة التشغيل "${task.title}" إلى فيديوهات منفصلة؟`)) return;
+    
+    try {
+      // Fetch playlist videos
+      const res = await fetch('http://localhost:3001/api/youtube/playlistItems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          playlistId: task.playlistId, 
+          apiKey: config.youtubeApiKey,
+          maxResults: 200
+        })
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch playlist videos');
+      }
+      
+      const data = await res.json();
+      const videos = data.videos || [];
+      
+      if (videos.length === 0) {
+        alert("لم يتم العثور على فيديوهات في القائمة");
+        return;
+      }
+      
+      // Create separate tasks for each video
+      let createdCount = 0;
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        const subTaskId = `${task.id}_video_${i}`;
+        const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+        
+        const newTask = {
+          telegramId: task.telegramId,
+          title: video.title || `فيديو ${i + 1}`,
+          description: task.description || '',
+          videoUrl: videoUrl,
+          videoId: video.videoId,
+          thumbnail: video.thumbnail,
+          stage: task.stage,
+          isRecurring: false,
+          isSplit: true,
+          parentPlaylistId: task.playlistId,
+          parentPlaylistTitle: task.title,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
+        createdCount++;
+      }
+      
+      // Delete original playlist task
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
+      setEditingTask(null);
+      alert(`تم تحويل القائمة إلى ${createdCount} فيديو منفصل! 🎉`);
+    } catch (error) {
+      console.error('Failed to convert playlist:', error);
+      alert(`خطأ: ${error.message}`);
+    }
   };
 
   const deleteTelegramMessage = async (taskId, telegramId) => {
@@ -501,6 +576,8 @@ const LifeTrack = ({ onBack }) => {
         title: editingTask.title, 
         description: editingTask.description, 
         isRecurring: editingTask.isRecurring,
+        isGroup: editingTask.isGroup || false,
+        subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
         playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
         watchedEpisodes: editingTask.watchedEpisodes || [],
         playlistId: editingTask.playlistId || null
@@ -531,7 +608,6 @@ const LifeTrack = ({ onBack }) => {
       setIsFocusModeActive(false);
       setIsFreeFocus(false);
       setFocusQueue([]);
-      setActiveVideo(null);
     }, 500);
   };
 
@@ -951,11 +1027,51 @@ const LifeTrack = ({ onBack }) => {
 
                             <div className="p-4">
                               {task.isRecurring && <div className="absolute top-3 left-3 text-amber-500 z-10" title="هدف مستمر"><Repeat size={14} /></div>}
-                              <p className={`text-slate-200 font-medium leading-relaxed mb-2 text-sm ${!task.videoId ? 'mt-1' : ''}`}>{task.title}</p>
+                              {task.isGroup && <div className="absolute top-3 right-3 text-purple-500 z-10" title="مجموعة"><Layers size={14} /></div>}
+                              <p className={`text-slate-200 font-medium leading-relaxed mb-2 text-sm ${!task.videoId ? 'mt-1' : ''} flex items-center gap-2`}>
+                                {task.isGroup && <Layers size={14} className="text-purple-500" />}
+                                {task.title}
+                              </p>
                               
                               {/* 📝 DESCRIPTION 📝 */}
                               {task.description && (
                                 <p className="text-slate-400 text-xs leading-relaxed mb-4 whitespace-pre-wrap">{task.description}</p>
+                              )}
+                              
+                              {/* 📦 SUBTASKS (GROUP) 📦 */}
+                              {task.isGroup && task.subTasks && task.subTasks.length > 0 && (
+                                <div className="mb-4 bg-slate-800/50 rounded-lg p-2 border border-slate-700">
+                                  <div className="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1">
+                                    <Layers size={12} />
+                                    الأهداف الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
+                                  </div>
+                                  <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                    {task.subTasks.map((subTask, idx) => (
+                                      <div key={subTask.id || idx} className="flex items-center gap-2 text-xs">
+                                        <button
+                                          onClick={async () => {
+                                            const newSubTasks = [...task.subTasks];
+                                            newSubTasks[idx].completed = !newSubTasks[idx].completed;
+                                            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
+                                              subTasks: newSubTasks,
+                                              updatedAt: new Date().toISOString()
+                                            });
+                                          }}
+                                          className={`w-4 h-4 rounded border flex items-center justify-center transition ${
+                                            subTask.completed 
+                                              ? 'bg-emerald-600 border-emerald-500' 
+                                              : 'border-slate-600 hover:border-slate-500'
+                                          }`}
+                                        >
+                                          {subTask.completed && <CheckCircle size={10} className="text-white" />}
+                                        </button>
+                                        <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                                          {subTask.title || `هدف فرعي ${idx + 1}`}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                               
                               {/* 📊 PLAYLIST PROGRESS 📊 */}
@@ -1060,6 +1176,80 @@ const LifeTrack = ({ onBack }) => {
              
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
 
+             {/* 📦 GROUP SETTINGS 📦 */}
+             <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => {
+                   const newIsGroup = !editingTask.isGroup;
+                   setEditingTask({
+                      ...editingTask, 
+                      isGroup: newIsGroup,
+                      subTasks: newIsGroup ? (editingTask.subTasks || []) : []
+                   });
+                }}>
+                   <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isGroup ? 'bg-purple-600 border-purple-600' : 'border-slate-600'}`}>
+                      {editingTask.isGroup && <Layers size={12} className="text-white"/>}
+                   </div>
+                   <span className="text-sm font-bold text-slate-300">تحويل إلى مجموعة (أهداف مكدسة)</span>
+                </div>
+                
+                {editingTask.isGroup && (
+                   <div className="space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                         <label className="text-xs font-bold text-slate-400 uppercase">الأهداف الفرعية</label>
+                         <button
+                            type="button"
+                            onClick={() => {
+                               const newSubTasks = [...(editingTask.subTasks || []), { id: Date.now(), title: '', completed: false }];
+                               setEditingTask({...editingTask, subTasks: newSubTasks});
+                            }}
+                            className="p-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition flex items-center gap-1"
+                         >
+                            <Plus size={12}/>
+                            <span className="text-xs font-bold">إضافة</span>
+                         </button>
+                      </div>
+                      
+                      <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                         {(editingTask.subTasks || []).map((subTask, idx) => (
+                            <div key={subTask.id} className="flex items-center gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-700">
+                               <input
+                                  type="text"
+                                  value={subTask.title}
+                                  onChange={(e) => {
+                                     const newSubTasks = [...(editingTask.subTasks || [])];
+                                     newSubTasks[idx].title = e.target.value;
+                                     setEditingTask({...editingTask, subTasks: newSubTasks});
+                                  }}
+                                  placeholder={`هدف فرعي ${idx + 1}`}
+                                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
+                               />
+                               <button
+                                  type="button"
+                                  onClick={() => {
+                                     const newSubTasks = (editingTask.subTasks || []).filter((_, i) => i !== idx);
+                                     setEditingTask({...editingTask, subTasks: newSubTasks});
+                                  }}
+                                  className="p-1 hover:bg-red-600/20 text-red-400 rounded transition"
+                               >
+                                  <Minus size={14}/>
+                               </button>
+                            </div>
+                         ))}
+                         
+                         {(editingTask.subTasks || []).length === 0 && (
+                            <p className="text-xs text-slate-500 text-center py-4">لا توجد أهداف فرعية. اضغط "إضافة" لإضافة هدف فرعي</p>
+                         )}
+                      </div>
+                      
+                      {(editingTask.subTasks || []).length > 0 && (
+                         <div className="text-right text-[10px] text-slate-500 pt-1">
+                            {editingTask.subTasks.filter(st => st.completed).length} من {(editingTask.subTasks || []).length} مكتمل
+                         </div>
+                      )}
+                   </div>
+                )}
+             </div>
+
              {/* 📺 PLAYLIST TRACKER SETTINGS 📺 */}
              <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => {
@@ -1139,6 +1329,17 @@ const LifeTrack = ({ onBack }) => {
                   className="w-full bg-slate-800 border-t border-slate-700 pt-3 mt-2 text-slate-400 text-xs font-bold hover:text-amber-500 hover:bg-slate-800/50 flex items-center justify-center gap-2 transition"
                 >
                    <Layers size={14}/> استخراج قائمة الفيديوهات ({editingTask.originalText.match(/(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g).length})
+                </button>
+             )}
+
+             {/* 🎵 CONVERT PLAYLIST TO VIDEOS BUTTON 🎵 */}
+             {editingTask?.playlistId && (
+                <button 
+                  type="button" 
+                  onClick={() => convertPlaylistToVideos(editingTask)}
+                  className="w-full bg-red-600/20 border-t border-slate-700 pt-3 mt-2 text-red-400 text-xs font-bold hover:text-red-300 hover:bg-red-600/30 flex items-center justify-center gap-2 transition"
+                >
+                   <Youtube size={14}/> تحويل قائمة التشغيل إلى فيديوهات منفصلة
                 </button>
              )}
            </form>
