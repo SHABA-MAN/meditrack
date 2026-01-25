@@ -684,7 +684,7 @@ const MediTrack = ({ onSwitchToLifeTrack }) => {
         
         {/* COLUMN 1: DROP ZONE (Queue System) */}
         <div 
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+          onDragOver={handleDragOver}
           onDrop={handleDrop}
           className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col p-6 text-center cursor-pointer group hover:scale-[1.01]"
         >

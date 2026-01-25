@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Repeat } from 'lucide-react';
-import { getPlaylistId, getVideoId } from '../utils/youtube';
+import { X, CheckCircle, Layers } from 'lucide-react';
+import { getPlaylistId } from '../utils/youtube';
 
 const EditTaskModal = ({ 
   task, 

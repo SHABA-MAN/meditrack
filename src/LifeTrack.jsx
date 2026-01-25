@@ -516,8 +516,6 @@ const LifeTrack = ({ appId, onBack }) => {
              focusQueue={focusQueue}
              setFocusQueue={setFocusQueue}
              setEditingTask={setEditingTask}
-             syncTelegram={syncTelegram}
-             syncing={syncing}
            />
            
            <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>

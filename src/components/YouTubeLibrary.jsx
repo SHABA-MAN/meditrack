@@ -12,9 +12,7 @@ const YouTubeLibrary = ({
   COLUMNS, 
   focusQueue, 
   setFocusQueue, 
-  setEditingTask,
-  syncTelegram,
-  syncing 
+  setEditingTask
 }) => {
   return (
     <div className="relative youtube-dropdown-container">
