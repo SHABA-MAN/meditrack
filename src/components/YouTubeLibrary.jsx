@@ -19,14 +19,16 @@ const YouTubeLibrary = ({
   return (
     <div className="relative youtube-dropdown-container">
       <button 
-        onClick={onClose} // Toggle logic should be handled by parent or this button just calls a toggle prop
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30"
+        onClick={onClose} 
+        className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-800 transition relative group"
+        title="مكتبة اليوتيوب"
       >
-        <Youtube size={18} />
-        <span>قوائم اليوتيوب</span>
-        <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
-          {tasks.filter(t => t.videoId || t.playlistId).length}
-        </span>
+        <Youtube size={20} />
+        {tasks.filter(t => t.videoId || t.playlistId).length > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-[10px] text-white flex items-center justify-center rounded-full border-2 border-slate-950">
+            {tasks.filter(t => t.videoId || t.playlistId).length}
+          </span>
+        )}
       </button>
       
       {isOpen && (

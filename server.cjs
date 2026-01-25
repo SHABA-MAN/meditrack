@@ -131,6 +131,36 @@ app.post('/api/youtube/videoInfo', async (req, res) => {
   }
 });
 
+// Proxy to get all items in a playlist
+app.post('/api/youtube/playlistItems', async (req, res) => {
+  const { playlistId, apiKey } = req.body;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'YouTube API Key is required' });
+  }
+  try {
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+      params: {
+        part: 'snippet,contentDetails',
+        playlistId: playlistId,
+        maxResults: 50,
+        key: apiKey
+      }
+    });
+    
+    const items = response.data.items.map(item => ({
+      title: item.snippet.title,
+      description: item.snippet.description,
+      videoId: item.contentDetails.videoId,
+      thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+      position: item.snippet.position
+    }));
+    
+    res.json({ items });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Telegram Proxy Server running on port ${port}`);
 });

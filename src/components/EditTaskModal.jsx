@@ -5,7 +5,8 @@ import { getPlaylistId, getVideoId } from '../utils/youtube';
 const EditTaskModal = ({ 
   task, 
   onClose, 
-  onSave 
+  onSave,
+  onExtract
 }) => {
   const [editingTask, setEditingTask] = useState(task);
 
@@ -61,6 +62,17 @@ const EditTaskModal = ({
                       <label className="block text-xs text-slate-500 mb-1">Playlist ID (اختياري)</label>
                       <input type="text" className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-slate-400 font-mono" value={editingTask.playlistId === 'manual' ? '' : editingTask.playlistId} onChange={e => setEditingTask({...editingTask, playlistId: e.target.value})} placeholder="الرابط أو ID" />
                   </div>
+                  
+                  {/* Extract Button */}
+                  {editingTask.playlistId && editingTask.playlistId !== 'manual' && (
+                    <button 
+                      type="button" 
+                      onClick={() => onExtract && onExtract(editingTask)}
+                      className="w-full mt-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-xs font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <Layers size={14}/> تحويل لمجموعة (استخراج الفيديوهات)
+                    </button>
+                  )}
                </div>
             )}
          </div>

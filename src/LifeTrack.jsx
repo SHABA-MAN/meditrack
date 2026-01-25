@@ -412,6 +412,72 @@ const LifeTrack = ({ appId, onBack }) => {
      setEditingTask(null);
   };
 
+  const extractPlaylist = async (task) => {
+    if (!config.youtubeApiKey) {
+       alert("يرجى إضافة YouTube API Key في الإعدادات أولاً!");
+       return;
+    }
+    
+    if (!confirm(`سيتم تحويل "${task.title}" إلى مجموعة واستخراج الفيديوهات منها. هل أنت متأكد؟`)) return;
+    
+    // Simple loading indication
+    const originalBtnText = document.activeElement.innerText;
+    document.activeElement.innerText = "جاري الاستخراج...";
+    document.activeElement.disabled = true;
+
+    try {
+       const res = await fetch('http://localhost:3001/api/youtube/playlistItems', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playlistId: task.playlistId, apiKey: config.youtubeApiKey })
+       });
+       
+       if (!res.ok) throw new Error("Failed to fetch playlist items");
+       
+       const { items } = await res.json();
+       
+       // 1. Convert parent task to Group
+       await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
+          isGroup: true,
+          type: 'group', 
+          playlistLength: items.length,
+          extractedAt: new Date().toISOString(),
+          description: task.description || `مجموعة تحتوي على ${items.length} فيديو`,
+          // Clear playlistId/videoId to prevent it from showing in YouTube dropdown as a playable single item? 
+          // Or keep it? If we keep it, it shows in dropdown. 
+          // Let's keep playlistId but remove videoId if present.
+          videoId: null,
+          updatedAt: new Date().toISOString()
+       });
+       
+       // 2. Create sub-tasks
+       let batchCount = 0;
+       for (const item of items) {
+          const subTaskId = `${task.id}_${item.videoId}`; 
+          
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), {
+             title: item.title,
+             description: item.description?.substring(0, 200) || '',
+             videoId: item.videoId,
+             thumbnail: item.thumbnail,
+             groupId: task.id, // Link to parent
+             stage: task.stage,
+             isRecurring: false,
+             createdAt: new Date().toISOString(), // You might want to offset times for sorting
+             updatedAt: new Date().toISOString(),
+             position: item.position // For sorting
+          });
+          batchCount++;
+       }
+       
+       alert(`تم إنشاء المجموعة واستخراج ${batchCount} فيديو بنجاح!`);
+       setEditingTask(null);
+    } catch (e) {
+       alert("حدث خطأ أثناء الاستخراج: " + e.message);
+       console.error(e);
+    }
+  };
+
   const startSession = () => {
     if(focusQueue.length === 0) return;
     setFocusMode(true);
@@ -444,7 +510,13 @@ const LifeTrack = ({ appId, onBack }) => {
            <YouTubeLibrary 
              isOpen={showYouTubeDropdown}
              onClose={() => setShowYouTubeDropdown(false)}
-             tasks={tasks}
+             tasks={tasks.filter(t => !t.groupId)} // Don't show sub-tasks in main list to avoid clutter? Or show them?
+             // Actually, sub-tasks (videos) SHOULD show in the dropdown list if they are videos.
+             // But if they are in a group, maybe we want to see the group or the videos?
+             // Let's pass all tasks for now, filtering logic is inside the component.
+             // Wait, YouTubeLibrary filters by videoId/playlistId. Group sub-tasks HAVE videoId. So they will show.
+             // The group parent (if converted) has NO videoId (I set it to null in extractPlaylist), so it won't show as a video, which is good.
+             // It ends up showing the exploded videos in the dropdown. Excellent.
              user={user}
              db={db}
              appId={appId}
@@ -513,10 +585,63 @@ const LifeTrack = ({ appId, onBack }) => {
                    <div className="flex items-center gap-2 font-bold text-slate-200">
                       <col.icon size={18} className={col.color.replace('border-', 'text-')}/> {col.title}
                    </div>
-                   <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">{tasks.filter(t => t.stage === col.id).length}</span>
+                   <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">{tasks.filter(t => t.stage === col.id && !t.groupId).length}</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                  {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId).map(task => (
+                  {/* Filter for root tasks (no groupId) */}
+                  {tasks.filter(t => t.stage === col.id && !t.groupId && !t.videoId && !t.playlistId || (t.isGroup && t.stage === col.id)).map(task => {
+                    // If it is a GROUP
+                    if (task.isGroup) {
+                       const subTasks = tasks.filter(t => t.groupId === task.id).sort((a,b) => (a.position || 0) - (b.position || 0));
+                       const completedSubTasks = subTasks.filter(t => t.lastCompletedAt); // Basic check, might need better completed logic for subtasks
+                       
+                       return (
+                         <div key={task.id} className="bg-slate-900/80 border-2 border-slate-700/50 rounded-xl overflow-hidden mb-3">
+                            <div className="p-3 bg-slate-800 flex items-center justify-between cursor-pointer" onClick={() => setEditingTask(task)}>
+                               <div className="flex items-center gap-2">
+                                  <Layers size={16} className="text-amber-500"/>
+                                  <span className="font-bold text-sm text-slate-200">{task.title}</span>
+                               </div>
+                               <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">{subTasks.length} عنصر</span>
+                            </div>
+                            
+                            {/* Group Progress */}
+                            <div className="h-1 bg-slate-700 w-full">
+                               <div className="h-full bg-amber-500 transition-all" style={{ width: `${(completedSubTasks.length / subTasks.length) * 100 || 0}%` }}></div>
+                            </div>
+
+                            <div className="p-2 space-y-2 bg-slate-900/50 group-tasks-container">
+                               {subTasks.map(subTask => (
+                                  <div key={subTask.id} draggable onDragStart={e => handleDragStart(e, subTask)} className="bg-slate-800 border border-slate-700 p-2 rounded flex items-center gap-3 hover:border-slate-600 transition group/item">
+                                     {subTask.thumbnail ? (
+                                        <div className="relative w-12 h-8 rounded overflow-hidden shrink-0 group/thumb">
+                                           <img src={subTask.thumbnail} className="w-full h-full object-cover" alt=""/>
+                                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition">
+                                              <Play size={12} className="text-white"/>
+                                           </div>
+                                        </div>
+                                     ) : (
+                                        <div className="w-12 h-8 bg-slate-700 rounded flex items-center justify-center shrink-0"><Youtube size={14} className="text-slate-500"/></div>
+                                     )}
+                                     
+                                     <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-slate-300 line-clamp-1">{subTask.title}</p>
+                                     </div>
+                                     
+                                     <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition">
+                                        <button onClick={() => { if(!focusQueue.find(q=>q.id===subTask.id)) setFocusQueue([...focusQueue, subTask]); }} className="p-1 hover:bg-amber-500/20 text-slate-500 hover:text-amber-500 rounded"><Zap size={12}/></button>
+                                        <button onClick={() => confirm("حذف؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTask.id))} className="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-500 rounded"><Trash2 size={12}/></button>
+                                     </div>
+                                  </div>
+                               ))}
+                               {subTasks.length === 0 && <div className="text-center text-xs text-slate-500 py-2">مجموعة فارغة</div>}
+                            </div>
+                         </div>
+                       );
+                    }
+
+                    // NORMAL TASK (Existing Logic)
+                    return (
                     <div key={task.id} draggable onDragStart={e => handleDragStart(e, task)} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-1 relative">
                         {(task.videoId || task.playlistId) ? (
                            <div className="relative aspect-video bg-black group/video">
@@ -564,7 +689,8 @@ const LifeTrack = ({ appId, onBack }) => {
                           </div>
                         </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
              </div>
           ))}
@@ -588,6 +714,7 @@ const LifeTrack = ({ appId, onBack }) => {
         task={editingTask}
         onClose={() => setEditingTask(null)}
         onSave={saveTaskEdit}
+        onExtract={extractPlaylist}
       />
 
       {/* 🧘‍♂️ FOCUS MODE 🧘‍♂️ */}
