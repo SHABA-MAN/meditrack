@@ -1323,11 +1323,11 @@ const LifeTrack = ({ onBack }) => {
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
-                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).length}
+                        {tasks.filter(t => t.stage === col.id && !t.parentGroupId).length}
                       </span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => (
+                      {tasks.filter(t => t.stage === col.id && !t.parentGroupId).map(task => (
                         <div 
                           key={task.id} 
                           draggable 
