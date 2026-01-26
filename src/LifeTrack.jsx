@@ -384,13 +384,19 @@ const LifeTrack = ({ onBack, user, db }) => {
               }
             }
             
+            // Use preceding description as title if available and short enough < 100 chars
+            if (!title && currentDescription && currentDescription.length < 100) {
+               title = currentDescription.trim();
+               currentDescription = ''; // Consumed as title
+            }
+
             if (!title) title = playlistId ? `قائمة تشغيل ${taskIndex + 1}` : `فيديو ${taskIndex + 1}`;
             
             const subTaskId = `${sourceId}_${taskIndex}`;
             const newTask = {
               telegramId: sourceId,
               title: title,
-              description: currentDescription.trim(),
+              description: currentDescription.trim(), // Remaining description (empty if consumed)
               videoUrl: videoUrl,
               videoId: videoId,
               playlistId: playlistId,
@@ -429,6 +435,12 @@ const LifeTrack = ({ onBack, user, db }) => {
                 }
              } catch (e) {
                 console.warn('Failed to fetch SoundCloud info', e);
+             }
+
+             // Use preceding description as title if available and short enough < 100 chars
+             if (!title && currentDescription && currentDescription.length < 100) {
+                title = currentDescription.trim();
+                currentDescription = ''; // Consumed as title
              }
 
              if (!title) title = `SoundCloud Track ${taskIndex + 1}`;
