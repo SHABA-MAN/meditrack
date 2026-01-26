@@ -1310,12 +1310,8 @@ const LifeTrack = ({ onBack }) => {
                 <div 
                   key={col.id} 
                   onDragOver={e => { 
-                    // Only prevent default if dragging a task (not when dragging to session zone)
-                    const taskId = e.dataTransfer.getData("taskId");
-                    if (taskId) {
-                      e.preventDefault(); 
-                      e.dataTransfer.dropEffect = 'move';
-                    }
+                    e.preventDefault(); 
+                    e.dataTransfer.dropEffect = 'move';
                   }} 
                   onDrop={e => handleDrop(e, col.id)} 
                   className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group`}
@@ -1323,22 +1319,19 @@ const LifeTrack = ({ onBack }) => {
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
-                        {tasks.filter(t => t.stage === col.id && !t.parentGroupId).length}
+                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).length}
                       </span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                      {tasks.filter(t => t.stage === col.id && !t.parentGroupId).map(task => (
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => (
                         <div 
                           key={task.id} 
                           draggable 
                           onDragStart={e => handleDragStart(e, task)}
                           onDragOver={e => {
-                            const draggedTaskId = e.dataTransfer.getData("taskId");
-                            if (draggedTaskId && draggedTaskId !== task.id && draggedTaskId !== '') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
-                            }
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
                           }}
                           onDragLeave={e => {
                             e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
