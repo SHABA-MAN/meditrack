@@ -757,6 +757,147 @@ const LifeTrack = ({ onBack }) => {
   
   const handleLogin = async () => { try { await signInAnonymously(auth); } catch (e) { alert(e.message); } };
 
+  const renderTaskCard = (task, isFocusMode = false, props = {}) => (
+    <div 
+      key={task.id}
+      className={`bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-none overflow-hidden shadow-sm group/card transition-all relative min-h-[120px] ${isFocusMode ? 'hover:scale-[1.01]' : 'hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'}`}
+      {...props}
+    >
+        {/* 🖼️ THUMBNAIL / VIDEO 🖼️ */}
+        {(task.videoId || task.playlistId) ? (
+            <div className={`w-full aspect-video relative group/video bg-slate-950 ${isFocusMode ? 'border-b border-slate-800' : ''}`}>
+                {isFocusMode ? (
+                    <iframe 
+                        src={task.playlistId 
+                        ? `https://www.youtube.com/embed/videoseries?list=${task.playlistId}`
+                        : `https://www.youtube.com/embed/${task.videoId}`
+                        } 
+                        className="w-full h-full"
+                        allowFullScreen
+                        title={task.title}
+                    />
+                ) : (
+                    <>
+                    {task.playlistId ? (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 flex-col gap-2">
+                            <Layers size={32} />
+                            <span className="text-xs font-bold uppercase tracking-widest">Playlist</span>
+                        </div>
+                    ) : (
+                        <img 
+                            src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
+                            className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
+                            alt="thumbnail"
+                        />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
+                        <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+                            <Play size={16} fill="white" />
+                        </div>
+                    </div>
+                    </>
+                )}
+            </div>
+        ) : null}
+
+        <div className="p-3">
+            {task.isRecurring && <div className="absolute top-2 left-2 text-amber-500 z-10" title="هدف مستمر"><Repeat size={12} /></div>}
+            <div className="flex items-start justify-between gap-2 mb-2">
+            <p className={`text-slate-200 font-medium leading-relaxed text-sm flex-1 flex items-center gap-1.5`}>
+                {task.isGroup && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); toggleGroupExpansion(task.id); }}
+                    className="p-0.5 hover:bg-slate-800 rounded transition text-purple-400"
+                >
+                    {expandedGroups.has(task.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                )}
+                {task.isGroup && <Layers size={14} className="text-purple-500 flex-shrink-0" />}
+                <span className="line-clamp-2">{task.title}</span>
+            </p>
+            </div>
+            
+            {/* 📝 DESCRIPTION 📝 */}
+            {task.description && !task.isGroup && (
+            <p className="text-slate-400 text-xs leading-relaxed mb-2 whitespace-pre-wrap line-clamp-2">{task.description}</p>
+            )}
+            
+            {/* 📦 SUBTASKS (GROUP) 📦 */}
+            {task.isGroup && task.subTasks && task.subTasks.length > 0 && expandedGroups.has(task.id) && (
+            <div className="mb-2 bg-slate-800/50 rounded-none p-1 border border-slate-700">
+                <div className="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1">
+                <Layers size={11} />
+                الأهداف الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
+                </div>
+                <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                {task.subTasks.map((subTask, idx) => (
+                    <div key={subTask.id || idx} className="flex items-center gap-1 text-xs bg-slate-900/50 p-1 rounded-none">
+                    <button
+                        onClick={async (e) => {
+                        e.stopPropagation();
+                        const newSubTasks = [...task.subTasks];
+                        newSubTasks[idx].completed = !newSubTasks[idx].completed;
+                        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
+                            subTasks: newSubTasks,
+                            updatedAt: new Date().toISOString()
+                        });
+                        }}
+                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition flex-shrink-0 ${
+                        subTask.completed 
+                            ? 'bg-emerald-600 border-emerald-500' 
+                            : 'border-slate-600 hover:border-slate-500'
+                        }`}
+                    >
+                        {subTask.completed && <CheckCircle size={8} className="text-white" />}
+                    </button>
+                    <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                        {subTask.title || `هدف فرعي ${idx + 1}`}
+                    </span>
+                    </div>
+                ))}
+                </div>
+            </div>
+            )}
+            
+            {task.isGroup && (!task.subTasks || task.subTasks.length === 0) && (
+            <div className="mb-3 text-xs text-slate-500 italic text-center py-2 bg-slate-800/30 rounded">
+                اسحب هدف هنا لإضافته للمجموعة
+            </div>
+            )}
+            
+            {/* 📊 PLAYLIST PROGRESS 📊 */}
+            {task.playlistId && task.playlistLength > 0 && (
+                <div className="mb-3 bg-slate-800 rounded-full h-1.5 overflow-hidden flex w-full">
+                <div 
+                    className="bg-emerald-500 h-full transition-all duration-500" 
+                    style={{ width: `${(task.watchedEpisodes?.length || 0) / task.playlistLength * 100}%` }}
+                />
+                </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800 mt-2">
+            <div className={`flex gap-1.5 transition-opacity ${isFocusMode ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
+                <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
+                <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
+            </div>
+            <div className="flex items-center gap-2">
+                {task.playlistId && task.playlistLength > 0 && (
+                    <span className="text-[9px] text-slate-500 font-mono">
+                    {task.watchedEpisodes?.length || 0}/{task.playlistLength}
+                    </span>
+                )}
+                {task.isGroup && (
+                <span className="text-[9px] text-purple-400 font-mono bg-purple-950/30 px-1.5 py-0.5 rounded">
+                    {task.subTasks?.length || 0}
+                </span>
+                )}
+                <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[9px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-0.5 rounded transition"><CheckCircle size={10} /> إنجاز</button>
+            </div>
+            </div>
+        </div>
+    </div>
+  );
+
   // --- Render ---
   if (loading) return <div className="h-screen bg-slate-950 flex items-center justify-center text-amber-500 font-bold">Loading...</div>;
   if (!user) return (
@@ -797,94 +938,7 @@ const LifeTrack = ({ onBack }) => {
                </div>
              ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10 max-w-7xl mx-auto items-start">
-                 {focusQueue.map((task) => (
-                   <div key={task.id} className={`bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 backdrop-blur-sm p-0 rounded-2xl shadow-2xl w-full flex flex-col items-center text-center relative group transition-all hover:-translate-y-1 overflow-hidden ${task.videoId ? 'col-span-2' : ''} ${task.isGroup ? 'row-span-2' : ''}`}>
-                      
-                      {/* 📺 VIDEO PLAYER MODE 📺 */}
-                      {(task.videoId || task.playlistId) ? (
-                        <div className="w-full aspect-video bg-black relative">
-                            <iframe 
-                              src={task.playlistId 
-                                ? `https://www.youtube.com/embed/videoseries?list=${task.playlistId}`
-                                : `https://www.youtube.com/embed/${task.videoId}`
-                              } 
-                              className="w-full h-full"
-                              allowFullScreen
-                              title={task.title}
-                            />
-                        </div>
-                      ) : null}
-
-                      <div className="p-6 w-full">
-                        <h2 className="text-xl font-bold text-white mb-2 leading-relaxed flex items-center justify-center gap-2">
-                          {task.videoId && <Youtube className="text-red-600" size={24}/>}
-                          {task.title}
-                        </h2>
-                        {task.description && <p className="text-slate-400 text-sm mb-6 whitespace-pre-wrap text-center">{task.description}</p>}
-                        
-                        <div className="mt-4 flex flex-col items-center w-full gap-4">
-                           {/* 📜 SUBTASKS LIST 📜 */}
-                           {task.isGroup && task.subTasks && task.subTasks.length > 0 && (
-                             <div className="w-full bg-slate-800/30 rounded-xl p-4 border border-slate-700/50 text-right mb-2">
-                               <div className="text-xs font-bold text-purple-400 mb-3 flex items-center gap-2 border-b border-purple-500/10 pb-2">
-                                  <Layers size={14} />
-                                  المهام الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
-                               </div>
-                               <div className="space-y-2 text-right">
-                                 {task.subTasks.map((subTask, idx) => (
-                                   <div key={subTask.id || idx} className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg hover:bg-slate-900 transition group/sub">
-                                      <button
-                                        onClick={async (e) => {
-                                          e.stopPropagation();
-                                          const newSubTasks = [...task.subTasks];
-                                          newSubTasks[idx].completed = !newSubTasks[idx].completed;
-                                          
-                                          // Update locally first for speed
-                                          const newTasks = tasks.map(t => t.id === task.id ? {...t, subTasks: newSubTasks} : t);
-                                          setTasks(newTasks);
-                                          
-                                          // Update in Focus Queue as well
-                                          const newQueue = focusQueue.map(q => q.id === task.id ? {...q, subTasks: newSubTasks} : q);
-                                          setFocusQueue(newQueue);
-
-                                          await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
-                                            subTasks: newSubTasks,
-                                            updatedAt: new Date().toISOString()
-                                          });
-                                        }}
-                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition flex-shrink-0 ${
-                                          subTask.completed 
-                                            ? 'bg-emerald-600 border-emerald-500' 
-                                            : 'border-slate-500 hover:border-emerald-500'
-                                        }`}
-                                      >
-                                        {subTask.completed && <CheckCircle size={12} className="text-white" />}
-                                      </button>
-                                      <span className={`flex-1 text-sm text-right ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-200 group-hover/sub:text-white'}`}>
-                                        {subTask.title || `هدف فرعي ${idx + 1}`}
-                                      </span>
-                                   </div>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
-
-                           <button onClick={async () => {
-                                await completeTask(task);
-                                removeFromQueue(task.id);
-                                if(focusQueue.length <= 1) closeFocusMode();
-                           }} className="px-6 py-2 bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white border border-emerald-900 rounded-full font-bold transition flex items-center gap-2">
-                             <CheckCircle size={18} /> تم الإنجاز
-                           </button>
-                           {task.videoId && (
-                              <a href={task.videoUrl} target="_blank" rel="noreferrer" className="px-6 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-full font-bold transition text-sm flex items-center gap-2">
-                                مشاهدة في يوتيوب
-                              </a>
-                           )}
-                        </div>
-                      </div>
-                   </div>
-                 ))}
+                  {focusQueue.map((task) => renderTaskCard(task, true))}
                </div>
              )}
           </div>
@@ -1323,145 +1377,22 @@ const LifeTrack = ({ onBack }) => {
                       </span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => (
-                        <div 
-                          key={task.id} 
-                          draggable 
-                          onDragStart={e => handleDragStart(e, task)}
-                          onDragOver={e => {
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => renderTaskCard(task, false, {
+                        draggable: true,
+                        onDragStart: e => handleDragStart(e, task),
+                        onDragOver: e => {
                             e.preventDefault();
                             e.stopPropagation();
                             e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
-                          }}
-                          onDragLeave={e => {
+                        },
+                        onDragLeave: e => {
                             e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
-                          }}
-                          onDrop={e => {
+                        },
+                        onDrop: e => {
                             e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
                             handleTaskDrop(e, task);
-                          }}
-                          className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-none overflow-hidden shadow-sm cursor-grab active:cursor-grabbing group/card transition-all hover:-translate-y-0.5 relative min-h-[120px]"
-                        >
-                            {/* 🖼️ THUMBNAIL IF VIDEO 🖼️ */}
-                            {(task.videoId || task.playlistId) ? (
-                               <div className="w-full aspect-video relative group/video bg-slate-950">
-                                  {task.playlistId ? (
-                                     <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 flex-col gap-2">
-                                        <Layers size={32} />
-                                        <span className="text-xs font-bold uppercase tracking-widest">Playlist</span>
-                                     </div>
-                                  ) : (
-                                    <img 
-                                      src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
-                                      className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
-                                      alt="thumbnail"
-                                    />
-                                  )}
-                                  
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
-                                     <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
-                                        <Play size={16} fill="white" />
-                                     </div>
-                                  </div>
-                               </div>
-                            ) : null}
-
-                            <div className="p-3">
-                              {task.isRecurring && <div className="absolute top-2 left-2 text-amber-500 z-10" title="هدف مستمر"><Repeat size={12} /></div>}
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <p className={`text-slate-200 font-medium leading-relaxed text-sm flex-1 flex items-center gap-1.5`}>
-                                  {task.isGroup && (
-                                    <button
-                                      onClick={() => toggleGroupExpansion(task.id)}
-                                      className="p-0.5 hover:bg-slate-800 rounded transition text-purple-400"
-                                    >
-                                      {expandedGroups.has(task.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                    </button>
-                                  )}
-                                  {task.isGroup && <Layers size={14} className="text-purple-500 flex-shrink-0" />}
-                                  <span className="line-clamp-2">{task.title}</span>
-                                </p>
-                              </div>
-                              
-                              {/* 📝 DESCRIPTION 📝 */}
-                              {task.description && !task.isGroup && (
-                                <p className="text-slate-400 text-xs leading-relaxed mb-2 whitespace-pre-wrap line-clamp-2">{task.description}</p>
-                              )}
-                              
-                              {/* 📦 SUBTASKS (GROUP) 📦 */}
-                              {task.isGroup && task.subTasks && task.subTasks.length > 0 && expandedGroups.has(task.id) && (
-                                <div className="mb-2 bg-slate-800/50 rounded-none p-1 border border-slate-700">
-                                  <div className="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1">
-                                    <Layers size={11} />
-                                    الأهداف الفرعية ({task.subTasks.filter(st => st.completed).length}/{task.subTasks.length})
-                                  </div>
-                                  <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                                    {task.subTasks.map((subTask, idx) => (
-                                      <div key={subTask.id || idx} className="flex items-center gap-1 text-xs bg-slate-900/50 p-1 rounded-none">
-                                        <button
-                                          onClick={async () => {
-                                            const newSubTasks = [...task.subTasks];
-                                            newSubTasks[idx].completed = !newSubTasks[idx].completed;
-                                            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
-                                              subTasks: newSubTasks,
-                                              updatedAt: new Date().toISOString()
-                                            });
-                                          }}
-                                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition flex-shrink-0 ${
-                                            subTask.completed 
-                                              ? 'bg-emerald-600 border-emerald-500' 
-                                              : 'border-slate-600 hover:border-slate-500'
-                                          }`}
-                                        >
-                                          {subTask.completed && <CheckCircle size={8} className="text-white" />}
-                                        </button>
-                                        <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                                          {subTask.title || `هدف فرعي ${idx + 1}`}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {task.isGroup && (!task.subTasks || task.subTasks.length === 0) && (
-                                <div className="mb-3 text-xs text-slate-500 italic text-center py-2 bg-slate-800/30 rounded">
-                                  اسحب هدف هنا لإضافته للمجموعة
-                                </div>
-                              )}
-                              
-                              {/* 📊 PLAYLIST PROGRESS 📊 */}
-                              {task.playlistId && task.playlistLength > 0 && (
-                                 <div className="mb-3 bg-slate-800 rounded-full h-1.5 overflow-hidden flex w-full">
-                                    <div 
-                                      className="bg-emerald-500 h-full transition-all duration-500" 
-                                      style={{ width: `${(task.watchedEpisodes?.length || 0) / task.playlistLength * 100}%` }}
-                                    />
-                                 </div>
-                              )}
-
-                              <div className="flex items-center justify-between pt-2 border-t border-slate-800 mt-2">
-                                <div className="flex gap-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                    <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
-                                    <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {task.playlistId && task.playlistLength > 0 && (
-                                     <span className="text-[9px] text-slate-500 font-mono">
-                                        {task.watchedEpisodes?.length || 0}/{task.playlistLength}
-                                     </span>
-                                  )}
-                                  {task.isGroup && (
-                                    <span className="text-[9px] text-purple-400 font-mono bg-purple-950/30 px-1.5 py-0.5 rounded">
-                                      {task.subTasks?.length || 0}
-                                    </span>
-                                  )}
-                                  <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[9px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-0.5 rounded transition"><CheckCircle size={10} /> إنجاز</button>
-                                </div>
-                              </div>
-                            </div>
-                        </div>
-                      ))}
+                        }
+                      }))}
                     </div>
                 </div>
               ))}
