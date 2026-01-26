@@ -76,6 +76,7 @@ const LifeTrack = ({ onBack, user, db }) => {
 
   // Core State
   // const [user, setUser] = useState(null); // REMOVED LOCAL USER STATE
+  const [tasks, setTasks] = useState([]);
   const [config, setConfig] = useState({ botToken: '', chatId: '', youtubeApiKey: '' });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
