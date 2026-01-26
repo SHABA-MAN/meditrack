@@ -124,6 +124,15 @@ const LifeTrack = ({ onBack }) => {
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
       setTasks(list);
+      
+      // Sync active focus queue with updates
+      setFocusQueue(prevQueue => {
+        if (prevQueue.length === 0) return prevQueue;
+        return prevQueue.map(q => {
+          const updated = list.find(t => t.id === q.id);
+          return updated ? { ...updated, isSubTask: q.isSubTask } : q;
+        });
+      });
     });
     return () => { unsubConfig(); unsubTasks(); };
   }, [user]);
@@ -645,6 +654,25 @@ const LifeTrack = ({ onBack }) => {
     if (editingTask.originalTitle !== editingTask.title && !editingTask.isSplit) {
         await updateTelegramMessage(editingTask.telegramId, editingTask.title);
     }
+    
+    // Update Focus Queue immediately for instant feedback
+    setFocusQueue(prevQueue => prevQueue.map(t => {
+        if (t.id === editingTask.id) {
+            return {
+                ...t,
+                title: editingTask.title,
+                description: editingTask.description,
+                isRecurring: editingTask.isRecurring,
+                isGroup: editingTask.isGroup || false,
+                subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
+                playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
+                watchedEpisodes: editingTask.watchedEpisodes || [],
+                playlistId: editingTask.playlistId || null
+            };
+        }
+        return t;
+    }));
+
     setEditingTask(null);
   };
 

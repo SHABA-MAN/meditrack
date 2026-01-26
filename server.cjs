@@ -46,7 +46,18 @@ app.post('/api/telegram/editMessage', async (req, res) => {
     });
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    // If Telegram says "message is not modified", it's not a server error.
+    if (error.response && error.response.data && error.response.data.description && error.response.data.description.includes("message is not modified")) {
+      return res.json({ ok: true, note: "Message content was identical, skipped update." });
+    }
+    
+    console.error("Telegram Edit Error:", error.response ? error.response.data : error.message);
+    // Return the actual error message from Telegram if available, but status 200 to avoid scary red console errors for logic issues
+    if (error.response) {
+       res.status(200).json({ ok: false, error: error.response.data });
+    } else {
+       res.status(500).json({ error: error.message });
+    }
   }
 });
 
