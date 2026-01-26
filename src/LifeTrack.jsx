@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -95,6 +95,8 @@ const LifeTrack = ({ onBack, user, db }) => {
   // YouTube Dropdown State
   const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
   const [showLibraryDropdown, setShowLibraryDropdown] = useState(false);
+  const libraryDropdownRef = useRef(null);
+  const youtubeDropdownRef = useRef(null);
   
   // Group Expansion State
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -147,7 +149,7 @@ const LifeTrack = ({ onBack, user, db }) => {
     
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showYouTubeDropdown]);
+  }, [showYouTubeDropdown, showLibraryDropdown]);
   
   // Auto-fetch thumbnails for YouTube tasks
   useEffect(() => {
