@@ -1128,17 +1128,20 @@ const LifeTrack = ({ onBack, user, db }) => {
         <div className="flex items-center gap-3">
            {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-full border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
            
-           {/* 🎬 YOUTUBE DROPDOWN 🎬 */}
+           {/* 🎬 YOUTUBE LIBRARY DROPDOWN (Start of YouTube/SoundCloud Library Code) 🎬 */}
+           {/* This section handles the dropdown for accessing all media tasks (YouTube/SoundCloud) from any column */}
            <div className="relative youtube-dropdown-container">
              <button 
                onClick={() => setShowYouTubeDropdown(!showYouTubeDropdown)}
-               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30"
+               className="flex items-center justify-center w-10 h-10 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 relative"
+               title="مكتبة اليوتيوب"
              >
-               <Youtube size={18} />
-               <span>قوائم اليوتيوب</span>
-               <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
-                  {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length}
-                </span>
+               <Youtube size={20} />
+               {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length > 0 && (
+                   <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] min-w-[16px] h-4 flex items-center justify-center rounded-full border border-slate-900 shadow-sm px-1">
+                     {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length}
+                   </span>
+               )}
              </button>
              
              {showYouTubeDropdown && (

@@ -67,12 +67,27 @@ const db = getFirestore(app);
 const appId = 'meditrack-v1';
 
 // --- Constants ---
-const SUBJECTS = {
-  TSF: { name: 'TSF', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
-  CBG: { name: 'CBG', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
-  BIO: { name: 'BIO', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
-  ANA: { name: 'ANA', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
-  PMD: { name: 'PMD', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' }
+// --- Constants ---
+const THEMES = {
+  indigo: { name: 'نيلي', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
+  emerald: { name: 'زمردي', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
+  rose: { name: 'وردي', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
+  blue: { name: 'أزرق', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
+  amber: { name: 'كهرماني', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' },
+  purple: { name: 'بنفسجي', color: 'bg-purple-100 text-purple-800 border-purple-200', badge: 'bg-purple-600', darkBadge: 'bg-purple-500' },
+  cyan: { name: 'سماوي', color: 'bg-cyan-100 text-cyan-800 border-cyan-200', badge: 'bg-cyan-600', darkBadge: 'bg-cyan-500' },
+  pink: { name: 'زهري', color: 'bg-pink-100 text-pink-800 border-pink-200', badge: 'bg-pink-600', darkBadge: 'bg-pink-500' },
+  slate: { name: 'رمادي', color: 'bg-slate-100 text-slate-800 border-slate-200', badge: 'bg-slate-600', darkBadge: 'bg-slate-500' },
+  orange: { name: 'برتقالي', color: 'bg-orange-100 text-orange-800 border-orange-200', badge: 'bg-orange-600', darkBadge: 'bg-orange-500' },
+  teal: { name: 'فيروزي', color: 'bg-teal-100 text-teal-800 border-teal-200', badge: 'bg-teal-600', darkBadge: 'bg-teal-500' },
+};
+
+const DEFAULT_SUBJECTS = {
+  TSF: { name: 'TSF', theme: 'indigo', ...THEMES.indigo },
+  CBG: { name: 'CBG', theme: 'emerald', ...THEMES.emerald },
+  BIO: { name: 'BIO', theme: 'rose', ...THEMES.rose },
+  ANA: { name: 'ANA', theme: 'blue', ...THEMES.blue },
+  PMD: { name: 'PMD', theme: 'amber', ...THEMES.amber }
 };
 
 const INTERVALS = [1, 2, 4, 7];
@@ -96,8 +111,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
   // UI State
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('config');
-  const [tempConfig, setTempConfig] = useState({ TSF: 0, CBG: 0, BIO: 0, ANA: 0, PMD: 0 });
+  const [tempConfig, setTempConfig] = useState({});
   const [selectedManageSubject, setSelectedManageSubject] = useState('ANA');
+  
+  // Custom Subjects State
+  const [subjects, setSubjects] = useState(DEFAULT_SUBJECTS);
+  const SUBJECTS = subjects; // Alias to keep existing code working
+  const [newSubject, setNewSubject] = useState({ code: '', name: '', theme: 'blue' });
+
   
   // Task Editing State
   const [editingTask, setEditingTask] = useState(null); 
@@ -167,7 +188,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       setHistory(logs);
     });
 
-    return () => { unsubConfig(); unsubLectures(); unsubHistory(); };
+    // 4. Subjects Definitions
+    const unsubDefs = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), (snap) => {
+      if (snap.exists()) {
+        setSubjects(snap.data());
+      }
+    });
+
+    return () => { unsubConfig(); unsubLectures(); unsubHistory(); unsubDefs(); };
   }, [user]);
 
   // --- Actions ---
@@ -306,7 +334,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     let nextReviewVal = '';
 
     if (newStage === 0) {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
+      // FIX: Don't delete the doc, just reset progress fields to preserve title/notes
+      const data = { 
+        stage: 0, 
+        lastStudied: null, 
+        nextReview: null, 
+        isCompleted: false 
+      };
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data, {merge: true}); 
       return;
     } 
     if (newStage > INTERVALS.length) {
@@ -335,15 +370,56 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     e.preventDefault();
     const taskData = e.dataTransfer.getData("task");
     if (taskData) {
-      const task = JSON.parse(taskData);
-      if (focusQueue.find(t => t.id === task.id)) return;
-      setFocusQueue([...focusQueue, task]);
+      try {
+        const task = JSON.parse(taskData);
+        if (focusQueue.find(t => t.id === task.id)) return;
+        setFocusQueue([...focusQueue, task]);
+      } catch (err) {
+        console.error("Invalid drag data", err);
+      }
     }
   };
 
   const removeFromQueue = (taskId) => {
     setFocusQueue(focusQueue.filter(t => t.id !== taskId));
   };
+
+  // --- Subject Management ---
+  const handleAddSubject = async (e) => {
+    e.preventDefault();
+    if (!newSubject.code || !newSubject.name) return alert("يرجى ملء الكود والاسم");
+    
+    const code = newSubject.code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (subjects[code]) return alert("هذا الكود موجود بالفعل!");
+
+    const theme = THEMES[newSubject.theme];
+    const newData = {
+      ...subjects,
+      [code]: {
+        name: newSubject.name,
+        theme: newSubject.theme,
+        ...theme
+      }
+    };
+
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
+    
+    // Init in config if not exists
+    if (config && config[code] === undefined) {
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [code]: 0 }, {merge: true});
+    }
+
+    setNewSubject({ code: '', name: '', theme: 'blue' });
+    alert("تم إضافة المادة بنجاح ✅");
+  };
+
+  const deleteSubject = async (code) => {
+     if (!confirm(`هل أنت متأكد من حذف مادة ${code}؟ لن يتم حذف المحاضرات القديمة ولكن لن تظهر المادة.`)) return;
+     const newData = { ...subjects };
+     delete newData[code];
+     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
+  };
+
 
   // --- Helpers ---
   const getSubjectStats = (subj) => {
@@ -674,170 +750,176 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       </nav>
 
       {/* Main Grid: 3 Columns */}
-      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
+      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-90px)]">
         
-        {/* COLUMN 1: DROP ZONE (Queue System) */}
+        {/* COLUMN 1: DROP ZONE (Queue System) - Takes up more space now (5 cols) */}
         <div 
           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
-          className="lg:col-span-1 rounded-2xl border-4 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex flex-col p-6 text-center cursor-pointer group hover:scale-[1.01]"
+          className={`lg:col-span-5 rounded-3xl transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
         >
-           {/* Placeholder if empty */}
+           {/* Background Pattern for Empty State */}
            {focusQueue.length === 0 && (
-             <div className="flex-1 flex flex-col items-center justify-center opacity-60 w-full">
-                <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Layers size={32} className="text-slate-400 group-hover:text-blue-500" />
+             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+           )}
+
+           {/* Placeholder if empty */}
+           {focusQueue.length === 0 ? (
+             <div className="flex-1 flex flex-col items-center justify-center text-center p-10 z-10">
+                <div className="w-24 h-24 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                  <Layers size={40} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
-                <h3 className="text-xl font-black text-slate-700 mb-1">منطقة التركيز</h3>
-                <p className="text-slate-500 text-sm max-w-[200px] leading-relaxed mb-6">
-                  اسحب أي عدد من المحاضرات هنا للبدء 🚀
+                <h3 className="text-2xl font-black text-slate-800 mb-2 tracking-tight">منطقة التركيز</h3>
+                <p className="text-slate-500 font-medium mb-8 max-w-xs leading-relaxed">
+                  اسحب المحاضرات هنا لبدء جلسة عميقة
                 </p>
                 
                 <button 
                   onClick={startFreeFocus}
-                  className="px-4 py-2 bg-white border border-slate-300 rounded-full text-xs font-bold text-slate-500 hover:bg-slate-800 hover:text-white hover:border-slate-800 transition flex items-center gap-2"
+                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover:translate-y-1"
                 >
-                  <Coffee size={14} />
+                  <Coffee size={16} />
                   جلسة حرة (بدون مواد)
                 </button>
              </div>
-           )}
-
-           {/* Queue Display */}
-           {focusQueue.length > 0 && (
-             <div className="w-full flex-1 flex flex-col">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
-                  <span>طابور المذاكرة</span>
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                    {focusQueue.length}
-                  </span>
-                </h3>
+           ) : (
+             <div className="flex flex-col h-full bg-slate-50/50">
+                {/* Header */}
+                <div className="p-6 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
+                    <p className="text-xs text-slate-400 font-bold mt-1">تجهيز {focusQueue.length} محاضرات للجلسة</p>
+                  </div>
+                  <button 
+                    onClick={startFocusSession}
+                    className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-2 transform active:scale-95"
+                  >
+                    <Play size={16} fill="currentColor" />
+                    ابدأ الآن
+                  </button>
+                </div>
                 
-                <div className="space-y-2 flex-1 overflow-y-auto max-h-[40vh] mb-4">
+                {/* List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {focusQueue.map((task, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex justify-between items-center animate-in slide-in-from-bottom duration-300">
-                       <div className="flex items-center gap-3">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${SUBJECTS[task.subject]?.badge}`}>
+                    <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
+                       <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
-                          </span>
-                          <span className="font-bold text-slate-700 text-sm">Lec {task.number}</span>
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-800 text-lg block">Lec {task.number}</span>
+                            {task.title && <span className="text-xs font-medium text-slate-500">{task.title}</span>}
+                          </div>
                        </div>
-                       <button onClick={() => removeFromQueue(task.id)} className="text-slate-300 hover:text-red-500">
-                         <X size={16} />
+                       <button onClick={() => removeFromQueue(task.id)} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                         <X size={18} />
                        </button>
                     </div>
                   ))}
                 </div>
-
-                <button 
-                  onClick={startFocusSession}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Play size={20} />
-                  ابدأ الجلسة ({focusQueue.length})
-                </button>
              </div>
            )}
         </div>
 
-        {/* COLUMN 2: REVIEWS */}
-        <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                <BrainCircuit size={18} className="text-amber-500" /> المراجعات
-              </h2>
-              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full">{reviews.length}</span>
-            </div>
+        {/* COLUMNS 2 & 3: RESOURCES (Reviews & New) - Split remaining 7 cols */}
+        <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
             
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50/50">
-              {reviews.length === 0 ? (
-                 <div className="text-center py-10 opacity-50">
-                   <CheckCircle size={40} className="mx-auto mb-2 text-green-500" />
-                   <p>عظيم! لا توجد مراجعات.</p>
-                 </div>
-              ) : (
-                reviews.map(r => (
-                  <div 
-                    key={r.id}
-                    draggable 
-                    onDragStart={(e) => handleDragStart(e, r)}
-                    className="bg-white p-4 rounded-xl border-l-4 border-amber-400 border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group select-none relative"
-                  >
-                    <button 
-                      onClick={() => openEditModal(r)}
-                      className="absolute top-2 left-2 p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition opacity-0 group-hover:opacity-100"
-                      title="تعديل التفاصيل"
-                    >
-                      <Edit2 size={12} />
-                    </button>
-
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${SUBJECTS[r.subject]?.color}`}>{r.subject}</span>
-                            <span className="font-bold text-slate-800">Lec {r.number}</span>
+            {/* REVIEWS PANEL */} //
+            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100/50 text-amber-600 rounded-lg">
+                      <BrainCircuit size={20} />
+                    </div>
+                    <span className="font-bold text-slate-700">المراجعات</span>
+                  </div>
+                  <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">{reviews.length}</span>
+                </div>
+                
+                <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+                  {reviews.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
+                       <CheckCircle size={48} className="mb-4 text-emerald-100" />
+                       <p className="font-medium text-sm">كل شيء تحت السيطرة!</p>
+                     </div>
+                  ) : (
+                    reviews.map(r => (
+                      <div 
+                        key={r.id}
+                        draggable 
+                        onDragStart={(e) => handleDragStart(e, r)}
+                        className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 cursor-grab active:cursor-grabbing transition-all group relative"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-3">
+                             <div className={`mt-1 w-2 h-10 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
+                             <div>
+                               <div className="flex items-center gap-2 mb-1">
+                                 <span className="font-black text-slate-700 text-base">Lec {r.number}</span>
+                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
+                               </div>
+                               <div className="flex flex-wrap gap-2 text-xs">
+                                  {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-500">تكرار {r.stage}</span>
+                               </div>
+                             </div>
                           </div>
-                          {r.title && <p className="text-xs font-medium text-slate-600 mb-0.5">{r.title}</p>}
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                             <span>تكرار {r.stage}</span>
-                             {r.difficulty === 'hard' && <span className="text-red-400 font-bold">• صعب</span>}
-                          </div>
+                          
+                          <button onClick={() => openEditModal(r)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-1 transition-opacity">
+                            <Edit2 size={14} />
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-        </div>
-
-        {/* COLUMN 3: NEW LECTURES */}
-        <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 flex flex-col h-full overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                <BookOpen size={18} className="text-blue-500" /> الجديد
-              </h2>
-              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{news.length}</span>
-            </div>
-            
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50/50">
-              {news.length === 0 ? (
-                <div className="text-center py-10 opacity-50">
-                  <p>انتهى الجديد! راجع الإعدادات ⚙️</p>
+                    ))
+                  )}
                 </div>
-              ) : (
-                news.map(n => (
-                  <div 
-                    key={n.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, n)}
-                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition group flex items-center gap-3 select-none relative"
-                  >
-                     <button 
-                        onClick={() => openEditModal(n)}
-                        className="absolute top-2 left-2 p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition opacity-0 group-hover:opacity-100"
-                        title="تعديل التفاصيل"
-                      >
-                        <Edit2 size={12} />
-                      </button>
+            </div>
 
-                     <GripHorizontal size={20} className="text-slate-300 group-hover:text-slate-500" />
-                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold text-white ${SUBJECTS[n.subject]?.badge}`}>
-                       {n.subject}
-                     </div>
-                     <div>
-                       <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-700">Lec {n.number}</p>
-                          {n.difficulty === 'hard' && <Flag size={10} className="text-red-500 fill-current" />}
-                       </div>
-                       {n.title && <p className="text-xs font-medium text-slate-600">{n.title}</p>}
-                       {!n.title && <p className="text-xs text-slate-400">جديد تماماً</p>}
-                     </div>
+            {/* NEW PANEL */}
+            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100/50 text-blue-600 rounded-lg">
+                      <BookOpen size={20} />
+                    </div>
+                    <span className="font-bold text-slate-700">الجديد</span>
                   </div>
-                ))
-              )}
+                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">{news.length}</span>
+                </div>
+                
+                <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+                  {news.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
+                       <p className="font-medium text-sm">لا يوجد مواد جديدة حالياً.</p>
+                       <button onClick={() => {setShowSettings(true); setSettingsTab('config')}} className="mt-2 text-blue-500 text-xs font-bold hover:underline">ضبط الإعدادات</button>
+                    </div>
+                  ) : (
+                    news.map(n => (
+                      <div 
+                        key={n.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, n)}
+                        className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing transition-all group flex items-center justify-between"
+                      >
+                         <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
+                              {n.subject}
+                            </div>
+                            <div>
+                               <span className="font-bold text-slate-700 text-sm block">Lecture {n.number}</span>
+                               {n.title && <span className="text-[10px] text-slate-500 block">{n.title}</span>}
+                            </div>
+                         </div>
+                         
+                         <button onClick={() => openEditModal(n)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-2 transition-opacity">
+                            <Edit2 size={14} />
+                          </button>
+                      </div>
+                    ))
+                  )}
+                </div>
             </div>
         </div>
 
@@ -850,6 +932,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
             <div className="bg-slate-50 p-4 border-b flex justify-between items-center">
               <div className="flex gap-4 overflow-x-auto">
                  <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
+                 <button onClick={() => setSettingsTab('subjects')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='subjects' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>المواد</button>
                  <button onClick={() => setSettingsTab('config')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الأعداد</button>
                  <button onClick={() => setSettingsTab('manage')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='manage' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>التقدم</button>
                  <button onClick={() => setSettingsTab('history')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='history' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>السجل</button>
@@ -869,6 +952,80 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                         <li><strong>الخطوة 3:</strong> كل إنجاز سيتم حفظه تلقائياً في سجل الجلسات.</li>
                      </ul>
                   </div>
+               )}
+
+               {settingsTab === 'subjects' && (
+                 <div className="space-y-6">
+                    <div className="space-y-3">
+                       <h3 className="font-bold text-slate-800 text-sm mb-2">المواد الحالية</h3>
+                       <div className="grid grid-cols-1 gap-2">
+                          {Object.entries(subjects).map(([code, subj]) => (
+                             <div key={code} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                                <div className="flex items-center gap-3">
+                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${subj.badge}`}>{code}</div>
+                                   <div>
+                                      <p className="font-bold text-sm text-slate-800">{subj.name}</p>
+                                      <p className="text-[10px] text-slate-400">Code: {code}</p>
+                                   </div>
+                                </div>
+                                <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-full hover:bg-red-50 transition" title="حذف المادة">
+                                  <Trash2 size={14}/>
+                                </button>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                       <h3 className="font-bold text-slate-800 text-sm mb-3">إضافة مادة جديدة</h3>
+                       <form onSubmit={handleAddSubject} className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                               <label className="block text-[10px] font-bold text-slate-500 mb-1">الكود (EN)</label>
+                               <input 
+                                 type="text" 
+                                 placeholder="مثلاً ANAT" 
+                                 className="w-full px-3 py-2 rounded-md border text-sm uppercase font-mono"
+                                 value={newSubject.code}
+                                 onChange={e => setNewSubject({...newSubject, code: e.target.value.toUpperCase()})}
+                                 maxLength={5}
+                               />
+                            </div>
+                            <div>
+                               <label className="block text-[10px] font-bold text-slate-500 mb-1">الاسم</label>
+                               <input 
+                                 type="text" 
+                                 placeholder="مثلاً تشريح" 
+                                 className="w-full px-3 py-2 rounded-md border text-sm"
+                                 value={newSubject.name}
+                                 onChange={e => setNewSubject({...newSubject, name: e.target.value})}
+                               />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">اللون</label>
+                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                               {Object.entries(THEMES).map(([key, theme]) => (
+                                  <button 
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setNewSubject({...newSubject, theme: key})}
+                                    className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-2 transition ${newSubject.theme === key ? 'border-slate-800 scale-110' : 'border-transparent'} ${theme.badge}`}
+                                    title={theme.name}
+                                  >
+                                    {newSubject.theme === key && <CheckCircle size={14} className="text-white"/>}
+                                  </button>
+                               ))}
+                            </div>
+                          </div>
+
+                          <button type="submit" className="w-full bg-slate-900 text-white py-2 rounded-md font-bold text-sm hover:bg-black transition flex items-center justify-center gap-2">
+                             <Plus size={16} /> إضافة المادة
+                          </button>
+                       </form>
+                    </div>
+                 </div>
                )}
 
                {settingsTab === 'config' && (
