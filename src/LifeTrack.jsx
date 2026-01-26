@@ -1175,14 +1175,13 @@ const LifeTrack = ({ onBack, user, db }) => {
                              >
                                <div className="flex items-center gap-3 p-2">
                                   {/* Thumbnail */}
-                                  {task.soundCloudUrl ? (
-                                     task.thumbnail ? (
-                                       <img src={task.thumbnail} className="w-20 h-14 object-cover rounded" alt=""/>
-                                     ) : (
+                                  {/* Thumbnail */}
+                                  {task.thumbnail ? (
+                                     <img src={task.thumbnail} className="w-20 h-14 object-cover rounded" alt=""/>
+                                  ) : task.soundCloudUrl ? (
                                        <div className="w-20 h-14 bg-orange-900/20 rounded flex items-center justify-center text-orange-500">
                                           <Zap size={20}/>
                                        </div>
-                                     )
                                   ) : task.videoId ? (
                                    <img 
                                      src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
