@@ -644,10 +644,12 @@ const LifeTrack = ({ onBack, user, db }) => {
 
     await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', editingTask.id), { 
         title: editingTask.title, 
-        description: editingTask.description, 
-        isRecurring: editingTask.isRecurring,
+        description: editingTask.description || '', 
+        isRecurring: editingTask.isRecurring || false,
         isGroup: editingTask.isGroup || false,
-        subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
+        isBook: editingTask.isBook || false, // Add Book flag
+        totalPages: editingTask.totalPages || 0, // Add Pages count
+        subTasks: (editingTask.isGroup || editingTask.isBook) ? (editingTask.subTasks || []) : [],
         playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
         watchedEpisodes: editingTask.watchedEpisodes || [],
         playlistId: editingTask.playlistId || null
@@ -663,10 +665,12 @@ const LifeTrack = ({ onBack, user, db }) => {
             return {
                 ...t,
                 title: editingTask.title,
-                description: editingTask.description,
-                isRecurring: editingTask.isRecurring,
+                description: editingTask.description || '',
+                isRecurring: editingTask.isRecurring || false,
                 isGroup: editingTask.isGroup || false,
-                subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
+                isBook: editingTask.isBook || false,
+                totalPages: editingTask.totalPages || 0,
+                subTasks: (editingTask.isGroup || editingTask.isBook) ? (editingTask.subTasks || []) : [],
                 playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
                 watchedEpisodes: editingTask.watchedEpisodes || [],
                 playlistId: editingTask.playlistId || null
