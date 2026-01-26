@@ -65,6 +65,31 @@ const getPlaylistId = (url) => {
   return match ? match[1] : null;
 };
 
+// Helper to render text with clickable links
+const renderTextWithLinks = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a 
+          key={index} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-400 hover:text-blue-300 underline mx-1 font-bold"
+        >
+          (اضغط هنا للذهاب)
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const LifeTrack = ({ onBack, user, db }) => {
   // Use the SAME appId as the main app to keep data consolidated
   // Or keep it separate but under the same User UID. 
@@ -965,7 +990,9 @@ const LifeTrack = ({ onBack, user, db }) => {
             
             {/* 📝 DESCRIPTION 📝 */}
             {task.description && !task.isGroup && (
-            <p className="text-slate-400 text-xs leading-relaxed mb-2 whitespace-pre-wrap line-clamp-2">{task.description}</p>
+            <p className="text-slate-400 text-xs leading-relaxed mb-2 whitespace-pre-wrap line-clamp-2">
+              {renderTextWithLinks(task.description)}
+            </p>
             )}
             
             {/* 📦 SUBTASKS (GROUP) 📦 */}
@@ -997,7 +1024,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                         {subTask.completed && <CheckCircle size={8} className="text-white" />}
                     </button>
                     <span className={`flex-1 ${subTask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                        {subTask.title || `هدف فرعي ${idx + 1}`}
+                        {renderTextWithLinks(subTask.title || `هدف فرعي ${idx + 1}`)}
                     </span>
                     </div>
                 ))}
