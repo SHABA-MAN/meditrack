@@ -189,7 +189,37 @@ const LifeTrack = ({ onBack, user, db }) => {
     };
     
     fetchThumbnails();
+    fetchThumbnails();
   }, [tasks, user, config.youtubeApiKey]);
+
+  // Auto-fetch thumbnails for SoundCloud tasks
+  useEffect(() => {
+     if (!user) return;
+     const fetchSCThumbnails = async () => {
+        const scTasks = tasks.filter(t => t.soundCloudUrl && !t.thumbnail);
+        for (const task of scTasks) {
+           try {
+              const res = await fetch('http://localhost:3001/api/soundcloud/resolve', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ url: task.soundCloudUrl })
+              });
+              if (res.ok) {
+                 const data = await res.json();
+                 if (data.thumbnail) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id), {
+                       thumbnail: data.thumbnail,
+                       updatedAt: new Date().toISOString()
+                    });
+                 }
+              }
+           } catch (e) {
+              console.warn('Failed to fetch SC thumbnail', e);
+           }
+        }
+     };
+     fetchSCThumbnails();
+  }, [tasks, user]);
 
   // --- Logic ---
   
@@ -197,7 +227,12 @@ const LifeTrack = ({ onBack, user, db }) => {
       if (!text) return 0;
       let newCount = 0;
       const ytRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]+)/g;
-      const allMatches = text.match(ytRegex);
+      const scRegex = /(https?:\/\/(?:www\.)?(?:soundcloud\.com|snd\.sc)[^\s]+)/g;
+      
+      const allMatches = text.match(ytRegex) || [];
+      const scMatches = text.match(scRegex) || [];
+      
+      if (allMatches.length === 0 && scMatches.length === 0) return 0;
 
       if (!allMatches || allMatches.length === 0) {
         // Check for list format (Goal + Subtasks)
@@ -307,6 +342,7 @@ const LifeTrack = ({ onBack, user, db }) => {
           if (!line) continue;
           
           const lineMatch = line.match(ytRegex);
+          const scMatch = line.match(scRegex);
           
           if (lineMatch) {
             // This line contains a YouTube URL
@@ -374,6 +410,50 @@ const LifeTrack = ({ onBack, user, db }) => {
             
             // Reset description for next playlist
             currentDescription = '';
+            currentDescription = '';
+          } else if (scMatch) {
+             // This line contains a SoundCloud URL
+             const scUrl = scMatch[0];
+             let title = line.replace(scUrl, '').trim();
+             let thumbnail = null;
+             
+             // Fetch SoundCloud Metadata
+             try {
+                const scRes = await fetch('http://localhost:3001/api/soundcloud/resolve', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ url: scUrl })
+                });
+                if (scRes.ok) {
+                   const scData = await scRes.json();
+                   title = title || scData.title;
+                   thumbnail = scData.thumbnail;
+                }
+             } catch (e) {
+                console.warn('Failed to fetch SoundCloud info', e);
+             }
+
+             if (!title) title = `SoundCloud Track ${taskIndex + 1}`;
+
+             const subTaskId = `${sourceId}_${taskIndex}`;
+             const newTask = {
+               telegramId: sourceId,
+               title: title,
+               description: currentDescription.trim(),
+               soundCloudUrl: scUrl, // New Field
+               stage: 'inbox',
+               isRecurring: false,
+               isSplit: true,
+               originalText: text,
+               thumbnail: thumbnail,
+               createdAt: new Date().toISOString(),
+               updatedAt: new Date().toISOString()
+             };
+
+             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', subTaskId), newTask);
+             taskIndex++;
+             newCount++;
+             currentDescription = '';
           } else {
             // This is a description line (text before the URL)
             currentDescription += (currentDescription ? '\n' : '') + line;
@@ -820,6 +900,40 @@ const LifeTrack = ({ onBack, user, db }) => {
                     </>
                 )}
             </div>
+            </div>
+        ) : task.soundCloudUrl ? (
+            <div className={`w-full aspect-video relative group/video bg-slate-950 ${isFocusMode ? 'border-b border-slate-800' : ''}`}>
+                {isFocusMode ? (
+                   <iframe
+                     width="100%"
+                     height="100%"
+                     scrolling="no"
+                     frameBorder="no"
+                     allow="autoplay"
+                     src={`https://w.soundcloud.com/player/?url=${task.soundCloudUrl}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`}
+                   />
+                ) : (
+                   <>
+                     {task.thumbnail ? (
+                        <img 
+                            src={task.thumbnail} 
+                            className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition" 
+                            alt="thumbnail"
+                        />
+                     ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-600/20 to-slate-900 text-orange-500 flex-col gap-2">
+                            <Zap size={32} />
+                            <span className="text-xs font-bold uppercase tracking-widest">SoundCloud</span>
+                        </div>
+                     )}
+                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
+                        <div className="w-10 h-10 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+                            <Play size={16} fill="white" />
+                        </div>
+                     </div>
+                   </>
+                )}
+            </div>
         ) : null}
 
         <div className="p-3">
@@ -986,8 +1100,9 @@ const LifeTrack = ({ onBack, user, db }) => {
                <Youtube size={18} />
                <span>قوائم اليوتيوب</span>
                <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
-                 {tasks.filter(t => t.videoId || t.playlistId).length}
-               </span>
+                <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
+                  {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length}
+                </span>
              </button>
              
              {showYouTubeDropdown && (
@@ -1005,9 +1120,9 @@ const LifeTrack = ({ onBack, user, db }) => {
                  
                  {/* Content */}
                  <div className="overflow-y-auto max-h-[520px] custom-scrollbar">
-                   {Object.values(COLUMNS).filter(col => col.id !== 'inbox').map(col => {
-                     const ytTasks = tasks.filter(t => (t.videoId || t.playlistId) && t.stage === col.id);
-                     if (ytTasks.length === 0) return null;
+                    {Object.values(COLUMNS).filter(col => col.id !== 'inbox').map(col => {
+                      const ytTasks = tasks.filter(t => (t.videoId || t.playlistId || t.soundCloudUrl) && t.stage === col.id);
+                      if (ytTasks.length === 0) return null;
                      
                      return (
                        <div key={col.id} className="border-b border-slate-800 last:border-0">
@@ -1023,8 +1138,16 @@ const LifeTrack = ({ onBack, user, db }) => {
                                className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-lg overflow-hidden transition-all group cursor-pointer"
                              >
                                <div className="flex items-center gap-3 p-2">
-                                 {/* Thumbnail */}
-                                 {task.videoId ? (
+                                  {/* Thumbnail */}
+                                  {task.soundCloudUrl ? (
+                                     task.thumbnail ? (
+                                       <img src={task.thumbnail} className="w-20 h-14 object-cover rounded" alt=""/>
+                                     ) : (
+                                       <div className="w-20 h-14 bg-orange-900/20 rounded flex items-center justify-center text-orange-500">
+                                          <Zap size={20}/>
+                                       </div>
+                                     )
+                                  ) : task.videoId ? (
                                    <img 
                                      src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
                                      className="w-20 h-14 object-cover rounded" 
@@ -1135,7 +1258,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                    
                    {/* Inbox Section */}
                    {(() => {
-                     const inboxYtTasks = tasks.filter(t => (t.videoId || t.playlistId) && t.stage === 'inbox');
+                     const inboxYtTasks = tasks.filter(t => (t.videoId || t.playlistId || t.soundCloudUrl) && t.stage === 'inbox');
                      if (inboxYtTasks.length === 0) return null;
                      
                      return (
@@ -1159,7 +1282,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                                      className="w-20 h-14 object-cover rounded" 
                                      alt=""
                                    />
-                                 ) : task.videoId ? (
+                                 ) : task.soundCloudUrl ? (
+                                     <div className="w-20 h-14 bg-orange-900/20 rounded flex items-center justify-center text-orange-500">
+                                        <Zap size={20}/>
+                                     </div>
+                                  ) : task.videoId ? (
                                    <img 
                                      src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
                                      className="w-20 h-14 object-cover rounded" 
@@ -1264,8 +1391,8 @@ const LifeTrack = ({ onBack, user, db }) => {
                        </div>
                      );
                    })()}
-                   
-                   {tasks.filter(t => t.videoId || t.playlistId).length === 0 && (
+                    
+                    {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length === 0 && (
                      <div className="p-8 text-center text-slate-500">
                        <Youtube size={48} className="mx-auto mb-4 opacity-30" />
                        <p className="text-sm">لا توجد فيديوهات أو قوائم تشغيل</p>
@@ -1331,10 +1458,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                      <div className="grid grid-cols-3 gap-2">
                         {focusQueue.map(q => (
                           <div 
-                            key={q.id} 
-                            className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
-                          >
-                             {q.videoId && (
+                            key={q.id}                             className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
+                           >
+                              {q.soundCloudUrl ? (
+                                 q.thumbnail ? <img src={q.thumbnail} className="w-full h-16 object-cover rounded mb-1.5" alt=""/> : <div className="w-full h-16 bg-orange-900/20 rounded mb-1.5 flex items-center justify-center"><Zap size={24} className="text-orange-500"/></div>
+                              ) : q.videoId && (
                                <img 
                                  src={`https://img.youtube.com/vi/${q.videoId}/default.jpg`} 
                                  className="w-full h-16 object-cover rounded mb-1.5" 

@@ -190,6 +190,31 @@ app.post('/api/youtube/playlistItems', async (req, res) => {
   }
 });
 
+// Proxy to resolve SoundCloud URL
+app.post('/api/soundcloud/resolve', async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+  try {
+    const response = await axios.get(`https://soundcloud.com/oembed`, {
+      params: {
+        format: 'json',
+        url: url
+      }
+    });
+    
+    res.json({
+      title: response.data.title,
+      thumbnail: response.data.thumbnail_url,
+      author_name: response.data.author_name
+    });
+  } catch (error) {
+    console.error('SoundCloud Resolve Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Telegram Proxy Server running on port ${port}`);
 });
