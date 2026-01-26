@@ -231,7 +231,8 @@ const LifeTrack = ({ onBack, user, db }) => {
       const allMatches = text.match(ytRegex) || [];
       const scMatches = text.match(scRegex) || [];
       
-      if (allMatches.length === 0 && scMatches.length === 0) return 0;
+      // Removed the blocking return: if (allMatches.length === 0 && scMatches.length === 0) return 0;
+
 
       if (!allMatches || allMatches.length === 0) {
         // Check for list format (Goal + Subtasks)
