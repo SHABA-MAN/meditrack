@@ -1563,7 +1563,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                         {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).length}
                       </span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                       {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => renderTaskCard(task, false, {
                         draggable: true,
                         onDragStart: e => handleDragStart(e, task),
