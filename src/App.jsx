@@ -77,9 +77,9 @@ const SUBJECTS = {
 
 const INTERVALS = [1, 2, 4, 7];
 
-const MediTrackApp = ({ onSwitchToLifeTrack }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
+  // const [user, setUser] = useState(null); // LIFTED UP
+  const [loading, setLoading] = useState(false); // Managed by parent mostly, but kept for local loading needs if any
   const [authError, setAuthError] = useState(null);
   
   // Data State
@@ -102,14 +102,9 @@ const MediTrackApp = ({ onSwitchToLifeTrack }) => {
   // Task Editing State
   const [editingTask, setEditingTask] = useState(null); 
 
-  // --- Auth Logic ---
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  // --- Auth Logic REMOVED (Handled in App) ---
+  // We keep login handlers here though, as they trigger auth changes globally
+
 
   const handleGoogleLogin = async () => {
     setAuthError(null);
@@ -982,13 +977,31 @@ const MediTrackApp = ({ onSwitchToLifeTrack }) => {
 };
 
 const App = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('meditrack');
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-slate-600 font-bold">جاري تحميل النظام...</div>;
+
   if (currentView === 'lifetrack') {
-    return <LifeTrack onBack={() => setCurrentView('meditrack')} />;
+    return <LifeTrack onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
   }
 
-  return <MediTrackApp onSwitchToLifeTrack={() => setCurrentView('lifetrack')} />;
+  return <MediTrackApp 
+    onSwitchToLifeTrack={() => setCurrentView('lifetrack')} 
+    user={user} 
+    // We pass setUser/loading/etc if MediTrackApp needs to handle login, 
+    // but better to move login logic here or keep it simple.
+    // For now, let's assume MediTrackApp handles login actions but uses this user prop.
+  />;
 };
 
 export default App;

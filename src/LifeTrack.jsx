@@ -39,20 +39,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCTaaYioZuXIIbs3G1RCfe9E5neCAtrRYY",
-  authDomain: "organizatio-79680.firebaseapp.com",
-  projectId: "organizatio-79680",
-  storageBucket: "organizatio-79680.firebasestorage.app",
-  messagingSenderId: "168221682458",
-  appId: "1:168221682458:web:d394d960fd25289906daa3"
-};
-
-const app = initializeApp(firebaseConfig, "LifeTrackApp"); 
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = 'lifetrack-v1';
-
+// --- REUSED FROM PARENT (PASSED AS PROPS) ---
+// We will receive user, db, and appId from the parent component
+// to ensure we share the same authenticated session and data scope.
 const COLUMNS = {
   inbox: { id: 'inbox', title: 'وارد الرسائل', color: 'border-slate-500', bg: 'bg-slate-900/50', icon: Inbox },
   do_first: { id: 'do_first', title: 'مهم وعاجل 🔥', color: 'border-red-500', bg: 'bg-red-950/20', icon: Zap },
@@ -76,10 +65,17 @@ const getPlaylistId = (url) => {
   return match ? match[1] : null;
 };
 
-const LifeTrack = ({ onBack }) => {
+const LifeTrack = ({ onBack, user, db }) => {
+  // Use the SAME appId as the main app to keep data consolidated
+  // Or keep it separate but under the same User UID. 
+  // User asked to link it to the same Google Account, so using the passed 'user' object is Key.
+  // We can keep 'lifetrack-v1' as a sub-collection or separate artifact ID if we want separation of concerns,
+  // BUT to ensure it's "the same account", we just rely on `user.uid`.
+  
+  const appId = 'meditrack-v1'; // Unified App ID
+
   // Core State
-  const [user, setUser] = useState(null);
-  const [tasks, setTasks] = useState([]);
+  // const [user, setUser] = useState(null); // REMOVED LOCAL USER STATE
   const [config, setConfig] = useState({ botToken: '', chatId: '', youtubeApiKey: '' });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -104,13 +100,10 @@ const LifeTrack = ({ onBack }) => {
   const [manualText, setManualText] = useState('');
 
   // --- Effects ---
+  // Authenticated User is now passed down, so we don't need onAuthStateChanged here.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
-      setUser(u);
-      if (!u) setLoading(false);
-    });
-    return () => unsub();
-  }, []);
+     if (!user) setLoading(false); 
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -932,7 +925,8 @@ const LifeTrack = ({ onBack }) => {
       <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
         <Target size={64} className="text-amber-500 mb-6" />
         <h1 className="text-4xl font-bold mb-2">LifeTrack</h1>
-        <button onClick={handleLogin} className="px-8 py-3 bg-amber-600 rounded-lg text-white font-bold mt-4">Login</button>
+        <p className="text-slate-500">Please log in from the main screen.</p>
+        <button onClick={onBack} className="px-8 py-3 bg-slate-800 rounded-lg text-white font-bold mt-4">Back to Dashboard</button>
       </div>
   );
 
