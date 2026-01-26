@@ -189,7 +189,6 @@ const LifeTrack = ({ onBack, user, db }) => {
     };
     
     fetchThumbnails();
-    fetchThumbnails();
   }, [tasks, user, config.youtubeApiKey]);
 
   // Auto-fetch thumbnails for SoundCloud tasks
@@ -409,7 +408,6 @@ const LifeTrack = ({ onBack, user, db }) => {
             newCount++;
             
             // Reset description for next playlist
-            currentDescription = '';
             currentDescription = '';
           } else if (scMatch) {
              // This line contains a SoundCloud URL
@@ -857,7 +855,7 @@ const LifeTrack = ({ onBack, user, db }) => {
     setExpandedGroups(newExpanded);
   };
   
-  const handleLogin = async () => { try { await signInAnonymously(auth); } catch (e) { alert(e.message); } };
+
 
   const renderTaskCard = (task, isFocusMode = false, props = {}) => (
     <div 
@@ -899,7 +897,6 @@ const LifeTrack = ({ onBack, user, db }) => {
                     </div>
                     </>
                 )}
-            </div>
             </div>
         ) : task.soundCloudUrl ? (
             <div className={`w-full aspect-video relative group/video bg-slate-950 ${isFocusMode ? 'border-b border-slate-800' : ''}`}>
@@ -1100,7 +1097,6 @@ const LifeTrack = ({ onBack, user, db }) => {
                <Youtube size={18} />
                <span>قوائم اليوتيوب</span>
                <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
-                <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full">
                   {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length}
                 </span>
              </button>
