@@ -3,22 +3,23 @@
 @tailwind utilities;
 
 /* Custom Scrollbar */
+/* Custom Scrollbar - Slim & Elegant */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
+  height: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
-  border-radius: 0;
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
-  border-radius: 0;
+  background: rgba(71, 85, 105, 0.4); /* Slate-600 with opacity */
+  border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+  background: rgba(245, 158, 11, 0.6); /* Amber-500 on hover */
 }
 
 /* Smooth animations */

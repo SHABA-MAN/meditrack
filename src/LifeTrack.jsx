@@ -1643,8 +1643,8 @@ const LifeTrack = ({ onBack, user, db }) => {
 
       {/* Edit Modal */}
       {editingTask && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-           <form onSubmit={saveTaskEdit} className="bg-slate-900 border border-slate-700 p-3 rounded-none w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+           <form onSubmit={saveTaskEdit} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
              <h3 className="font-bold text-lg text-white mb-4">تعديل الهدف</h3>
              
              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">العنوان</label>
