@@ -750,13 +750,13 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       </nav>
 
       {/* Main Grid: 3 Columns */}
-      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-90px)]">
+      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
         
-        {/* COLUMN 1: DROP ZONE (Queue System) - Takes up more space now (5 cols) */}
+        {/* COLUMN 1: DROP ZONE (Queue System) */}
         <div 
           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
-          className={`lg:col-span-5 rounded-3xl transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
+          className={`lg:col-span-1 rounded-3xl transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
         >
            {/* Background Pattern for Empty State */}
            {focusQueue.length === 0 && (
@@ -765,18 +765,18 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
            {/* Placeholder if empty */}
            {focusQueue.length === 0 ? (
-             <div className="flex-1 flex flex-col items-center justify-center text-center p-10 z-10">
-                <div className="w-24 h-24 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-                  <Layers size={40} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 z-10">
+                <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                  <Layers size={32} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 mb-2 tracking-tight">منطقة التركيز</h3>
-                <p className="text-slate-500 font-medium mb-8 max-w-xs leading-relaxed">
+                <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">منطقة التركيز</h3>
+                <p className="text-slate-500 font-medium mb-8 max-w-[200px] leading-relaxed mx-auto">
                   اسحب المحاضرات هنا لبدء جلسة عميقة
                 </p>
                 
                 <button 
                   onClick={startFreeFocus}
-                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover:translate-y-1"
+                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover:translate-y-1 mx-auto"
                 >
                   <Coffee size={16} />
                   جلسة حرة (بدون مواد)
@@ -785,35 +785,35 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
            ) : (
              <div className="flex flex-col h-full bg-slate-50/50">
                 {/* Header */}
-                <div className="p-6 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
+                <div className="p-4 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                   <div>
-                    <h3 className="text-xl font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
-                    <p className="text-xs text-slate-400 font-bold mt-1">تجهيز {focusQueue.length} محاضرات للجلسة</p>
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
+                    <p className="text-[10px] text-slate-400 font-bold mt-1">تجهيز {focusQueue.length} محاضرات</p>
                   </div>
                   <button 
                     onClick={startFocusSession}
-                    className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-2 transform active:scale-95"
+                    className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-2 transform active:scale-95"
                   >
-                    <Play size={16} fill="currentColor" />
-                    ابدأ الآن
+                    <Play size={14} fill="currentColor" />
+                    ابدأ
                   </button>
                 </div>
                 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
                   {focusQueue.map((task, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
-                       <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
+                    <div key={idx} className="bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
+                       <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-800 text-lg block">Lec {task.number}</span>
-                            {task.title && <span className="text-xs font-medium text-slate-500">{task.title}</span>}
+                            <span className="font-bold text-slate-800 text-sm block">Lec {task.number}</span>
+                            {task.title && <span className="text-[10px] font-medium text-slate-500">{task.title}</span>}
                           </div>
                        </div>
                        <button onClick={() => removeFromQueue(task.id)} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
-                         <X size={18} />
+                         <X size={16} />
                        </button>
                     </div>
                   ))}
@@ -822,104 +822,100 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
            )}
         </div>
 
-        {/* COLUMNS 2 & 3: RESOURCES (Reviews & New) - Split remaining 7 cols */}
-        <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-            
-            {/* REVIEWS PANEL */} //
-            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100/50 text-amber-600 rounded-lg">
-                      <BrainCircuit size={20} />
-                    </div>
-                    <span className="font-bold text-slate-700">المراجعات</span>
-                  </div>
-                  <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">{reviews.length}</span>
+        {/* COLUMN 2: REVIEWS */}
+        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-100/50 text-amber-600 rounded-lg">
+                  <BrainCircuit size={18} />
                 </div>
-                
-                <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
-                  {reviews.length === 0 ? (
-                     <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                       <CheckCircle size={48} className="mb-4 text-emerald-100" />
-                       <p className="font-medium text-sm">كل شيء تحت السيطرة!</p>
-                     </div>
-                  ) : (
-                    reviews.map(r => (
-                      <div 
-                        key={r.id}
-                        draggable 
-                        onDragStart={(e) => handleDragStart(e, r)}
-                        className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 cursor-grab active:cursor-grabbing transition-all group relative"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-3">
-                             <div className={`mt-1 w-2 h-10 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
-                             <div>
-                               <div className="flex items-center gap-2 mb-1">
-                                 <span className="font-black text-slate-700 text-base">Lec {r.number}</span>
-                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
-                               </div>
-                               <div className="flex flex-wrap gap-2 text-xs">
-                                  {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
-                                  <span className="text-slate-300">•</span>
-                                  <span className="text-slate-500">تكرار {r.stage}</span>
-                               </div>
-                             </div>
-                          </div>
-                          
-                          <button onClick={() => openEditModal(r)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-1 transition-opacity">
-                            <Edit2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <span className="font-bold text-slate-700">المراجعات</span>
+              </div>
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">{reviews.length}</span>
             </div>
-
-            {/* NEW PANEL */}
-            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100/50 text-blue-600 rounded-lg">
-                      <BookOpen size={20} />
-                    </div>
-                    <span className="font-bold text-slate-700">الجديد</span>
-                  </div>
-                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">{news.length}</span>
-                </div>
-                
-                <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
-                  {news.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                       <p className="font-medium text-sm">لا يوجد مواد جديدة حالياً.</p>
-                       <button onClick={() => {setShowSettings(true); setSettingsTab('config')}} className="mt-2 text-blue-500 text-xs font-bold hover:underline">ضبط الإعدادات</button>
-                    </div>
-                  ) : (
-                    news.map(n => (
-                      <div 
-                        key={n.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, n)}
-                        className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing transition-all group flex items-center justify-between"
-                      >
-                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
-                              {n.subject}
-                            </div>
-                            <div>
-                               <span className="font-bold text-slate-700 text-sm block">Lecture {n.number}</span>
-                               {n.title && <span className="text-[10px] text-slate-500 block">{n.title}</span>}
-                            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+              {reviews.length === 0 ? (
+                 <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
+                   <CheckCircle size={40} className="mb-4 text-emerald-100" />
+                   <p className="font-medium text-sm">كل شيء تحت السيطرة!</p>
+                 </div>
+              ) : (
+                reviews.map(r => (
+                  <div 
+                    key={r.id}
+                    draggable 
+                    onDragStart={(e) => handleDragStart(e, r)}
+                    className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 cursor-grab active:cursor-grabbing transition-all group relative"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3">
+                         <div className={`mt-1 w-1.5 h-8 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
+                         <div>
+                           <div className="flex items-center gap-2 mb-1">
+                             <span className="font-black text-slate-700 text-sm">Lec {r.number}</span>
+                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
+                           </div>
+                           <div className="flex flex-wrap gap-2 text-[10px]">
+                              {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-500">تكرار {r.stage}</span>
+                           </div>
                          </div>
-                         
-                         <button onClick={() => openEditModal(n)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-2 transition-opacity">
-                            <Edit2 size={14} />
-                          </button>
                       </div>
-                    ))
-                  )}
+                      
+                      <button onClick={() => openEditModal(r)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-1 transition-opacity">
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+        </div>
+
+        {/* COLUMN 3: NEW */}
+        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-100/50 text-blue-600 rounded-lg">
+                  <BookOpen size={18} />
                 </div>
+                <span className="font-bold text-slate-700">الجديد</span>
+              </div>
+              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">{news.length}</span>
+            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+              {news.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
+                   <p className="font-medium text-sm">لا يوجد مواد جديدة حالياً.</p>
+                   <button onClick={() => {setShowSettings(true); setSettingsTab('config')}} className="mt-2 text-blue-500 text-xs font-bold hover:underline">ضبط الإعدادات</button>
+                </div>
+              ) : (
+                news.map(n => (
+                  <div 
+                    key={n.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, n)}
+                    className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing transition-all group flex items-center justify-between"
+                  >
+                     <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
+                          {n.subject}
+                        </div>
+                        <div>
+                           <span className="font-bold text-slate-700 text-sm block">Lecture {n.number}</span>
+                           {n.title && <span className="text-[10px] text-slate-500 block">{n.title}</span>}
+                        </div>
+                     </div>
+                     
+                     <button onClick={() => openEditModal(n)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-2 transition-opacity">
+                        <Edit2 size={12} />
+                      </button>
+                  </div>
+                ))
+              )}
             </div>
         </div>
 
