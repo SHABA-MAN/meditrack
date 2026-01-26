@@ -1185,7 +1185,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                      )
                                   ) : task.videoId ? (
                                    <img 
-                                     src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
+                                     src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
                                      className="w-20 h-14 object-cover rounded" 
                                      alt=""
                                    />
@@ -1560,11 +1560,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
-                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).length}
+                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).length}
                       </span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => renderTaskCard(task, false, {
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).map(task => renderTaskCard(task, false, {
                         draggable: true,
                         onDragStart: e => handleDragStart(e, task),
                         onDragOver: e => {
