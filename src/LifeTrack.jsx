@@ -36,8 +36,10 @@ import {
   Plus,
   Minus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Book
 } from 'lucide-react';
+import { BookCard, LibraryDropdown } from './BookLibrary';
 
 // --- REUSED FROM PARENT (PASSED AS PROPS) ---
 // We will receive user, db, and appId from the parent component
@@ -92,6 +94,7 @@ const LifeTrack = ({ onBack, user, db }) => {
   
   // YouTube Dropdown State
   const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
+  const [showLibraryDropdown, setShowLibraryDropdown] = useState(false);
   
   // Group Expansion State
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -136,6 +139,9 @@ const LifeTrack = ({ onBack, user, db }) => {
     const handleClickOutside = (e) => {
       if (showYouTubeDropdown && !e.target.closest('.youtube-dropdown-container')) {
         setShowYouTubeDropdown(false);
+      }
+      if (showLibraryDropdown && !e.target.closest('.library-dropdown-container')) {
+        setShowLibraryDropdown(false);
       }
     };
     
@@ -779,7 +785,25 @@ const LifeTrack = ({ onBack, user, db }) => {
   
   const handleLogin = async () => { try { await signInAnonymously(auth); } catch (e) { alert(e.message); } };
 
-  const renderTaskCard = (task, isFocusMode = false, props = {}) => (
+  const renderTaskCard = (task, isFocusMode = false, props = {}) => {
+    if (task.isBook) {
+        return (
+            <BookCard 
+                key={task.id}
+                task={task}
+                isFocusMode={isFocusMode}
+                user={user}
+                db={db}
+                appId={appId}
+                onEdit={(t) => setEditingTask({...t, originalTitle: t.title})}
+                expandedGroups={expandedGroups}
+                toggleGroupExpansion={toggleGroupExpansion}
+                {...props}
+            />
+        );
+    }
+
+    return (
     <div 
       key={task.id}
       className={`bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-none overflow-hidden shadow-sm group/card transition-all relative min-h-[120px] ${isFocusMode ? 'hover:scale-[1.01]' : 'hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'}`}
@@ -918,7 +942,8 @@ const LifeTrack = ({ onBack, user, db }) => {
             </div>
         </div>
     </div>
-  );
+    );
+  };
 
   // --- Render ---
   if (loading) return <div className="h-screen bg-slate-950 flex items-center justify-center text-amber-500 font-bold">Loading...</div>;
@@ -977,8 +1002,43 @@ const LifeTrack = ({ onBack, user, db }) => {
         <div className="flex items-center gap-3">
            {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-full border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
            
-           {/* 🎬 YOUTUBE DROPDOWN 🎬 */}
-           <div className="relative youtube-dropdown-container">
+            {/* 📚 LIBRARY DROPDOWN 📚 */}
+            <div className="relative library-dropdown-container" ref={libraryDropdownRef}>
+               <button 
+                 onClick={() => setShowLibraryDropdown(!showLibraryDropdown)}
+                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white border border-amber-900/30"
+               >
+                 <Book size={18} />
+                 <span>المكتبة</span>
+                 <span className="bg-amber-500/30 text-amber-300 text-xs px-2 py-0.5 rounded-full">
+                   {tasks.filter(t => t.isBook).length}
+                 </span>
+               </button>
+               <LibraryDropdown 
+                  books={tasks.filter(t => t.isBook)}
+                  show={showLibraryDropdown}
+                  onClose={() => setShowLibraryDropdown(false)}
+                  onEdit={(t) => setEditingTask({...t, originalTitle: t.title})}
+                  user={user}
+                  db={db}
+                  appId={appId}
+                  addToFocus={(book) => {
+                      if (!focusQueue.find(q => q.id === book.id)) {
+                          setFocusQueue([...focusQueue, book]);
+                      }
+                  }}
+                  COLUMNS={COLUMNS}
+                  onMoveStage={async (taskId, stageId) => {
+                      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId), { 
+                          stage: stageId, 
+                          updatedAt: new Date().toISOString() 
+                      });
+                  }}
+               />
+            </div>
+
+            {/* 🎬 YOUTUBE DROPDOWN 🎬 */}
+            <div className="relative youtube-dropdown-container" ref={youtubeDropdownRef}>
              <button 
                onClick={() => setShowYouTubeDropdown(!showYouTubeDropdown)}
                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30"
@@ -1396,11 +1456,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
                       <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
-                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).length}
+                        {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !t.isBook).length}
                       </span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId).map(task => renderTaskCard(task, false, {
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !t.isBook).map(task => renderTaskCard(task, false, {
                         draggable: true,
                         onDragStart: e => handleDragStart(e, task),
                         onDragOver: e => {
@@ -1684,18 +1744,49 @@ const LifeTrack = ({ onBack, user, db }) => {
                   autoFocus
                />
                
-               <div className="flex gap-3">
-                  <button 
+                {/* Quick Add Buttons */}
+                <div className="flex gap-2">
+                   <button 
                      onClick={handleManualAdd} 
                      disabled={syncing || !manualText.trim()}
                      className={`flex-1 font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 ${syncing || !manualText.trim() ? 'bg-slate-800 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30'}`}
                   >
                      {syncing ? <RefreshCw size={16} className="animate-spin"/> : <Plus size={18}/>}
-                     إضافة الهدف
-                  </button>
-               </div>
-            </div>
-         </div>
+                     إضافة هدف
+                   </button>
+                   
+                   {/* Add Book Button (Opens separate flow or logic) */}
+                   <button 
+                       onClick={async () => {
+                           if (!manualText.trim()) return alert("اكتب اسم الكتاب أولاً");
+                           const title = manualText.split('\n')[0];
+                           const pages = prompt("كم عدد صفحات الكتاب؟", "0");
+                           if (pages === null) return;
+                           
+                           const newTask = {
+                               title: title,
+                               description: manualText.replace(title, '').trim(),
+                               isBook: true,
+                               totalPages: parseInt(pages) || 0,
+                               stage: 'inbox',
+                               subTasks: [],
+                               coverColor: null, // Will be generated
+                               createdAt: new Date().toISOString(),
+                               updatedAt: new Date().toISOString()
+                           };
+                           
+                           await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', `book_${Date.now()}`), newTask);
+                           setShowAddModal(false);
+                           setManualText('');
+                           alert("تم إضافة الكتاب للمكتبة 📚");
+                       }}
+                       className="px-4 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white border border-amber-600/30 rounded-lg font-bold transition flex items-center gap-2"
+                   >
+                       <Book size={18}/> إضافة كـ كتاب
+                   </button>
+                </div>
+             </div>
+          </div>
        )}
 
     </div>
