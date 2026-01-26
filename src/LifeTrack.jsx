@@ -800,6 +800,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                 onEdit={(t) => setEditingTask({...t, originalTitle: t.title})}
                 expandedGroups={expandedGroups}
                 toggleGroupExpansion={toggleGroupExpansion}
+                COLUMNS={COLUMNS}
                 {...props}
             />
         );
@@ -1553,26 +1554,44 @@ const LifeTrack = ({ onBack, user, db }) => {
              
              <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
 
-             {/* 📦 GROUP SETTINGS 📦 */}
+             {/* 📦 GROUP / BOOK SETTINGS 📦 */}
              <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
-                <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => {
-                   const newIsGroup = !editingTask.isGroup;
-                   setEditingTask({
-                      ...editingTask, 
-                      isGroup: newIsGroup,
-                      subTasks: newIsGroup ? (editingTask.subTasks || []) : []
-                   });
-                }}>
-                   <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isGroup ? 'bg-purple-600 border-purple-600' : 'border-slate-600'}`}>
-                      {editingTask.isGroup && <Layers size={12} className="text-white"/>}
-                   </div>
-                   <span className="text-sm font-bold text-slate-300">تحويل إلى مجموعة (أهداف مكدسة)</span>
-                </div>
+                {/* For non-books, show toggle. For books, always show sections */}
+                {!editingTask.isBook && (
+                    <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => {
+                       const newIsGroup = !editingTask.isGroup;
+                       setEditingTask({
+                          ...editingTask, 
+                          isGroup: newIsGroup,
+                          subTasks: newIsGroup ? (editingTask.subTasks || []) : []
+                       });
+                    }}>
+                       <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isGroup ? 'bg-purple-600 border-purple-600' : 'border-slate-600'}`}>
+                          {editingTask.isGroup && <Layers size={12} className="text-white"/>}
+                       </div>
+                       <span className="text-sm font-bold text-slate-300">تحويل إلى مجموعة (أهداف مكدسة)</span>
+                    </div>
+                )}
                 
-                {editingTask.isGroup && (
+                {(editingTask.isGroup || editingTask.isBook) && (
                    <div className="space-y-3">
+                      {/* Book Specifics */}
+                      {editingTask.isBook && (
+                          <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                              <label className="text-xs font-bold text-slate-400 uppercase">عدد الصفحات الكلي</label>
+                              <input 
+                                type="number" 
+                                className="w-20 bg-slate-900 border border-slate-700 rounded text-center text-white py-1 outline-none focus:border-amber-500 font-mono"
+                                value={editingTask.totalPages || 0}
+                                onChange={e => setEditingTask({...editingTask, totalPages: parseInt(e.target.value)})}
+                              />
+                          </div>
+                      )}
+
                       <div className="flex items-center justify-between mb-2">
-                         <label className="text-xs font-bold text-slate-400 uppercase">الأهداف الفرعية</label>
+                         <label className="text-xs font-bold text-slate-400 uppercase">
+                             {editingTask.isBook ? 'الفصول / أهداف القراءة' : 'الأهداف الفرعية'}
+                         </label>
                          <button
                             type="button"
                             onClick={() => {
@@ -1597,7 +1616,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                      newSubTasks[idx].title = e.target.value;
                                      setEditingTask({...editingTask, subTasks: newSubTasks});
                                   }}
-                                  placeholder={`هدف فرعي ${idx + 1}`}
+                                  placeholder={editingTask.isBook ? `مثال: قراءة 50 صفحة` : `هدف فرعي ${idx + 1}`}
                                   className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
                                />
                                <button
@@ -1614,7 +1633,9 @@ const LifeTrack = ({ onBack, user, db }) => {
                          ))}
                          
                          {(editingTask.subTasks || []).length === 0 && (
-                            <p className="text-xs text-slate-500 text-center py-4">لا توجد أهداف فرعية. اضغط "إضافة" لإضافة هدف فرعي</p>
+                            <p className="text-xs text-slate-500 text-center py-4">
+                                {editingTask.isBook ? 'أضف فصول الكتاب أو أهداف القراءة المقسمة' : 'لا توجد أهداف فرعية. اضغط "إضافة" لإضافة هدف فرعي'}
+                            </p>
                          )}
                       </div>
                       
@@ -1769,10 +1790,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                                title: title,
                                description: manualText.replace(title, '').trim(),
                                isBook: true,
+                               isGroup: true, // Auto-enable Stacked Goals
                                totalPages: parseInt(pages) || 0,
                                stage: 'inbox',
                                subTasks: [],
-                               coverColor: null, // Will be generated
+                               coverColor: null, 
                                createdAt: new Date().toISOString(),
                                updatedAt: new Date().toISOString()
                            };

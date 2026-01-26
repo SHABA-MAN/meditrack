@@ -15,7 +15,7 @@ import {
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 // --- BOOK CARD COMPONENT ---
-export const BookCard = ({ task, isFocusMode, user, db, appId, onEdit, expandedGroups, toggleGroupExpansion }) => {
+export const BookCard = ({ task, isFocusMode, user, db, appId, onEdit, expandedGroups, toggleGroupExpansion, COLUMNS }) => {
   
   const totalPages = parseInt(task.totalPages) || 0;
   // Calculate approximate page progress based on subtask completion
@@ -25,6 +25,9 @@ export const BookCard = ({ task, isFocusMode, user, db, appId, onEdit, expandedG
   const totalSubtasks = task.subTasks ? task.subTasks.length : 0;
   const progressPercent = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
   const pagesRead = Math.round((progressPercent / 100) * totalPages);
+
+  // Get Stage Info
+  const currentStage = COLUMNS ? COLUMNS[task.stage] : null;
 
   // Generate a consistent cover color based on title hash if not provided
   const getCoverColor = (str) => {
@@ -49,12 +52,21 @@ export const BookCard = ({ task, isFocusMode, user, db, appId, onEdit, expandedG
              ${isFocusMode ? 'min-h-[160px]' : ''}
         `}>
             {/* Header / Cover Area */}
-            <div className={`p-3 border-b border-slate-800 flex gap-3 ${coverColor} bg-opacity-20`}>
+            <div className={`p-3 border-b border-slate-800 flex gap-3 ${coverColor} bg-opacity-20 relative`}>
+                
+                {/* Stage Badge (Top Right) */}
+                {currentStage && (
+                    <div className={`absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border bg-slate-900/80 backdrop-blur-sm ${currentStage.color.replace('border-', 'text-').replace('border-', 'border-')}`}>
+                        <currentStage.icon size={8} />
+                        <span>{currentStage.title}</span>
+                    </div>
+                )}
+
                 <div className={`w-10 h-14 rounded shadow-lg flex items-center justify-center ${coverColor} text-white/50 border border-white/10 shrink-0`}>
                     <Book size={20} />
                 </div>
-                <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-100 leading-tight line-clamp-2">{task.title}</h3>
+                <div className="flex-1 min-w-0 pt-1">
+                    <h3 className="font-bold text-slate-100 leading-tight line-clamp-2 text-sm">{task.title}</h3>
                     <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                         <span className="font-mono">{pagesRead}</span> / <span className="font-mono">{totalPages}</span> صفحة
                     </p>
