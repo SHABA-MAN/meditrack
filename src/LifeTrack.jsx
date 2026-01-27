@@ -1100,15 +1100,30 @@ const LifeTrack = ({ onBack, user, db }) => {
         <div className={`fixed inset-0 z-50 flex flex-col transition-all duration-500 ease-in-out transform ${
             isFocusAnimating ? 'bg-slate-950 translate-x-0' : 'bg-slate-950 -translate-x-full'
         }`}>
-          {/* Top Bar */}
+          {/* Top Bar (Minimal) */}
           <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20 pointer-events-none">
              <div className="pointer-events-auto flex items-center gap-3">
                <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-full bg-slate-900/50 backdrop-blur-md">
                  {isFreeFocus ? 'Free Session' : `Active Tasks: ${focusQueue.length}`}
                </span>
+
+               {/* SWITCHER BUTTON */}
+               <button 
+                 onClick={onBack}
+                 className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-full text-xs font-bold transition-all backdrop-blur-md"
+                 title="العودة إلى MediTrack (ستبقى الجلسة محفوظة)"
+               >
+                 <BrainCircuit size={14} />
+                 MediTrack
+               </button>
              </div>
              <div className="pointer-events-auto">
-                <button onClick={closeFocusMode} className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-full"><X size={24} /></button>
+                <button 
+                  onClick={closeFocusMode} 
+                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-full"
+                >
+                  <X size={24} />
+                </button>
              </div>
           </div>
 

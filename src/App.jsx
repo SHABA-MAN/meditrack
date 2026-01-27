@@ -610,7 +610,18 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-full bg-slate-900/50 backdrop-blur-md">
                  {isFreeFocus ? 'Free Session' : `Active Tasks: ${focusQueue.length}`}
                </span>
+               
+               {/* SWITCHER BUTTON */}
+               <button 
+                 onClick={onSwitchToLifeTrack}
+                 className="flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded-full text-xs font-bold transition-all backdrop-blur-md"
+                 title="الذهاب إلى LifeTrack (ستبقى الجلسة محفوظة)"
+               >
+                 <Zap size={14} fill="currentColor" />
+                 LifeTrack
+               </button>
              </div>
+
              <div className="pointer-events-auto">
                 <button 
                   onClick={closeFocusMode} 
