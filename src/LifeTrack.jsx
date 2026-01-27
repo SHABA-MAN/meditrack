@@ -36,7 +36,8 @@ import {
   Plus,
   Minus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  BrainCircuit
 } from 'lucide-react';
 
 // --- REUSED FROM PARENT (PASSED AS PROPS) ---
