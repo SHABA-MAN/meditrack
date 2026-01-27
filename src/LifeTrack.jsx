@@ -703,6 +703,79 @@ const LifeTrack = ({ onBack, user, db }) => {
   };
 
   // --- Handlers ---
+  // --- Session Persistence ---
+  const sessionRef = user ? doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current') : null;
+
+  const saveSessionToCloud = async (isFree, queue) => {
+    if (!user || !sessionRef) return;
+    try {
+      await setDoc(sessionRef, {
+        type: 'lifetrack',
+        startTime: new Date().toISOString(),
+        isFree,
+        queue: queue || []
+      });
+    } catch (e) {
+      console.error("Failed to save session", e);
+    }
+  };
+
+  const deleteSessionFromCloud = async () => {
+    if (!user || !sessionRef) return;
+    try {
+      await deleteDoc(sessionRef);
+    } catch (e) {
+       console.error("Failed to delete session", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || !sessionRef) return;
+    
+    // Restore Session
+    const unsubSession = onSnapshot(sessionRef, (snap) => {
+      if (snap.exists()) {
+         const data = snap.data();
+         if (data.type === 'lifetrack') {
+            setIsFocusModeActive(true);
+            setIsFreeFocus(data.isFree);
+            setFocusQueue(data.queue || []);
+            setTimeout(() => setIsFocusAnimating(true), 50);
+         }
+      } else {
+         if (!isFocusAnimating && isFocusModeActive) {
+             // setIsFocusModeActive(false); 
+         }
+      }
+    });
+    return () => unsubSession();
+  }, [user, sessionRef]);
+
+  const startFocusSession = () => {
+    if (focusQueue.length === 0) return;
+    setIsFreeFocus(false);
+    setIsFocusModeActive(true);
+    setTimeout(() => setIsFocusAnimating(true), 50);
+    saveSessionToCloud(false, focusQueue);
+  };
+
+  const startFreeFocus = () => {
+    setIsFreeFocus(true);
+    setIsFocusModeActive(true);
+    setTimeout(() => setIsFocusAnimating(true), 50);
+    saveSessionToCloud(true, []);
+  };
+
+  const closeFocusMode = () => {
+    setIsFocusAnimating(false);
+    setTimeout(() => {
+      setIsFocusModeActive(false);
+      setIsFreeFocus(false);
+      setFocusQueue([]);
+      deleteSessionFromCloud();
+    }, 500); 
+  };
+
   const completeTask = async (task) => {
     if (task.isRecurring) {
        if (confirm("هذا هدف مستمر. هل أتممت جلسة منه؟")) alert("أحسنت! تم تسجيل الإنجاز ✅");
@@ -711,7 +784,18 @@ const LifeTrack = ({ onBack, user, db }) => {
           // 1. Delete Locally
           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
           
-          // 2. Check Telegram Sync
+          // 2. Remove from Focus Queue & Sync
+          const newQueue = focusQueue.filter(q => q.id !== task.id);
+          setFocusQueue(newQueue);
+          
+          if (isFocusModeActive) { // Sync only if active to avoid unnecessary writes
+             saveSessionToCloud(isFreeFocus, newQueue);
+             if (newQueue.length === 0 && !isFreeFocus) {
+                 closeFocusMode();
+             }
+          }
+
+          // 3. Check Telegram Sync
           if (task.isSplit) {
              const siblings = tasks.filter(t => t.telegramId === task.telegramId && t.id !== task.id);
              if (siblings.length === 0) {
@@ -732,80 +816,6 @@ const LifeTrack = ({ onBack, user, db }) => {
           }
        }
     }
-  };
-
-  const saveTaskEdit = async (e) => {
-    e.preventDefault();
-    if (!editingTask) return;
-    
-    // Check completion if playlist
-    let isFinished = false;
-    if (editingTask.playlistId && editingTask.playlistLength > 0 && editingTask.watchedEpisodes?.length === parseInt(editingTask.playlistLength)) {
-        isFinished = confirm("أحسنت! لقد أتممت جميع فيديوهات السلسلة. هل تريد إنجاز الهدف وحذفه؟");
-    }
-
-    if (isFinished) {
-         await completeTask(editingTask);
-         setEditingTask(null);
-         return;
-    }
-
-    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', editingTask.id), { 
-        title: editingTask.title, 
-        description: editingTask.description, 
-        isRecurring: editingTask.isRecurring,
-        isGroup: editingTask.isGroup || false,
-        subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
-        playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
-        watchedEpisodes: editingTask.watchedEpisodes || [],
-        playlistId: editingTask.playlistId || null
-    });
-
-    if (editingTask.originalTitle !== editingTask.title && !editingTask.isSplit) {
-        await updateTelegramMessage(editingTask.telegramId, editingTask.title);
-    }
-    
-    // Update Focus Queue immediately for instant feedback
-    setFocusQueue(prevQueue => prevQueue.map(t => {
-        if (t.id === editingTask.id) {
-            return {
-                ...t,
-                title: editingTask.title,
-                description: editingTask.description,
-                isRecurring: editingTask.isRecurring,
-                isGroup: editingTask.isGroup || false,
-                subTasks: editingTask.isGroup ? (editingTask.subTasks || []) : [],
-                playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
-                watchedEpisodes: editingTask.watchedEpisodes || [],
-                playlistId: editingTask.playlistId || null
-            };
-        }
-        return t;
-    }));
-
-    setEditingTask(null);
-  };
-
-  const startFocusSession = () => {
-    if (focusQueue.length === 0) return;
-    setIsFreeFocus(false);
-    setIsFocusModeActive(true);
-    setTimeout(() => setIsFocusAnimating(true), 50);
-  };
-
-  const startFreeFocus = () => {
-    setIsFreeFocus(true);
-    setIsFocusModeActive(true);
-    setTimeout(() => setIsFocusAnimating(true), 50);
-  };
-
-  const closeFocusMode = () => {
-    setIsFocusAnimating(false);
-    setTimeout(() => {
-      setIsFocusModeActive(false);
-      setIsFreeFocus(false);
-      setFocusQueue([]);
-    }, 500);
   };
 
   const handleQueueDrop = (e) => {

@@ -262,17 +262,73 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     setShowSettings(false);
   };
 
+  // --- Session Persistence ---
+  const sessionRef = user ? doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current') : null;
+
+  const saveSessionToCloud = async (isFree, queue) => {
+    if (!user || !sessionRef) return;
+    try {
+      await setDoc(sessionRef, {
+        type: 'meditrack',
+        startTime: new Date().toISOString(),
+        isFree,
+        queue: queue || []
+      });
+    } catch (e) {
+      console.error("Failed to save session", e);
+    }
+  };
+
+  const deleteSessionFromCloud = async () => {
+    if (!user || !sessionRef) return;
+    try {
+      await deleteDoc(sessionRef);
+    } catch (e) {
+       console.error("Failed to delete session", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || !sessionRef) return;
+    
+    // Restore Session
+    const unsubSession = onSnapshot(sessionRef, (snap) => {
+      if (snap.exists()) {
+         const data = snap.data();
+         if (data.type === 'meditrack') {
+            // Only restore if we are not already in a session (to avoid loops) 
+            // OR if the queue length is different (sync from another tab)
+            // Ideally, we just set state always to match cloud
+            setIsFocusModeActive(true);
+            setIsFreeFocus(data.isFree);
+            setFocusQueue(data.queue || []);
+            setTimeout(() => setIsFocusAnimating(true), 50);
+         }
+      } else {
+         // If doc deleted (e.g. from another tab), close session
+         if (!isFocusAnimating && isFocusModeActive) { // rough check to avoid closing while opening
+             // We can optionally force close here, but let's be gentle
+             // setIsFocusModeActive(false); 
+         }
+      }
+    });
+    return () => unsubSession();
+  }, [user, sessionRef]);
+
+
   const startFocusSession = () => {
     if (focusQueue.length === 0) return;
     setIsFreeFocus(false);
     setIsFocusModeActive(true);
     setTimeout(() => setIsFocusAnimating(true), 50);
+    saveSessionToCloud(false, focusQueue);
   };
 
   const startFreeFocus = () => {
     setIsFreeFocus(true);
     setIsFocusModeActive(true);
     setTimeout(() => setIsFocusAnimating(true), 50);
+    saveSessionToCloud(true, []);
   };
 
   const closeFocusMode = () => {
@@ -282,6 +338,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       setIsFreeFocus(false);
       // Optional: keep queue or clear it? Clearing it to avoid confusion
       setFocusQueue([]);
+      deleteSessionFromCloud();
     }, 500); 
   };
 
@@ -319,6 +376,9 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     // 3. Update Queue UI (Remove the completed task)
     const newQueue = focusQueue.filter(t => t.id !== task.id);
     setFocusQueue(newQueue);
+
+    // Sync Update to Cloud Session
+    saveSessionToCloud(false, newQueue);
 
     if (newQueue.length === 0) {
       closeFocusMode();
