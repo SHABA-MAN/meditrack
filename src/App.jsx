@@ -263,12 +263,13 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
   };
 
   // --- Session Persistence ---
-  const sessionRef = user ? doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current') : null;
-
+  // Fix: Create ref inside functions to avoid unstable dependency in useEffect
+  
   const saveSessionToCloud = async (isFree, queue) => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
     try {
-      await setDoc(sessionRef, {
+      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+      await setDoc(ref, {
         type: 'meditrack',
         startTime: new Date().toISOString(),
         isFree,
@@ -280,40 +281,41 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
   };
 
   const deleteSessionFromCloud = async () => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
     try {
-      await deleteDoc(sessionRef);
+      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+      await deleteDoc(ref);
     } catch (e) {
        console.error("Failed to delete session", e);
     }
   };
 
   useEffect(() => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
+    
+    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
     
     // Restore Session
-    const unsubSession = onSnapshot(sessionRef, (snap) => {
+    const unsubSession = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
          const data = snap.data();
          if (data.type === 'meditrack') {
-            // Only restore if we are not already in a session (to avoid loops) 
-            // OR if the queue length is different (sync from another tab)
-            // Ideally, we just set state always to match cloud
             setIsFocusModeActive(true);
             setIsFreeFocus(data.isFree);
-            setFocusQueue(data.queue || []);
+            // Only update queue if different to avoid cycle
+            setFocusQueue(prev => {
+                const newQ = data.queue || [];
+                if (JSON.stringify(prev) !== JSON.stringify(newQ)) return newQ;
+                return prev;
+            });
             setTimeout(() => setIsFocusAnimating(true), 50);
          }
-      } else {
-         // If doc deleted (e.g. from another tab), close session
-         if (!isFocusAnimating && isFocusModeActive) { // rough check to avoid closing while opening
-             // We can optionally force close here, but let's be gentle
-             // setIsFocusModeActive(false); 
-         }
       }
+    }, (error) => {
+        console.error("Session sync error:", error);
     });
     return () => unsubSession();
-  }, [user, sessionRef]);
+  }, [user?.uid]); // Only re-run if UID changes
 
 
   const startFocusSession = () => {

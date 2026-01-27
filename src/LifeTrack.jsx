@@ -705,12 +705,12 @@ const LifeTrack = ({ onBack, user, db }) => {
 
   // --- Handlers ---
   // --- Session Persistence ---
-  const sessionRef = user ? doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current') : null;
-
+  
   const saveSessionToCloud = async (isFree, queue) => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
     try {
-      await setDoc(sessionRef, {
+      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+      await setDoc(ref, {
         type: 'lifetrack',
         startTime: new Date().toISOString(),
         isFree,
@@ -722,35 +722,40 @@ const LifeTrack = ({ onBack, user, db }) => {
   };
 
   const deleteSessionFromCloud = async () => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
     try {
-      await deleteDoc(sessionRef);
+      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+      await deleteDoc(ref);
     } catch (e) {
        console.error("Failed to delete session", e);
     }
   };
 
   useEffect(() => {
-    if (!user || !sessionRef) return;
+    if (!user) return;
     
+    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+
     // Restore Session
-    const unsubSession = onSnapshot(sessionRef, (snap) => {
+    const unsubSession = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
          const data = snap.data();
          if (data.type === 'lifetrack') {
             setIsFocusModeActive(true);
             setIsFreeFocus(data.isFree);
-            setFocusQueue(data.queue || []);
+            setFocusQueue(prev => {
+                const newQ = data.queue || [];
+                if (JSON.stringify(prev) !== JSON.stringify(newQ)) return newQ;
+                return prev;
+            });
             setTimeout(() => setIsFocusAnimating(true), 50);
          }
-      } else {
-         if (!isFocusAnimating && isFocusModeActive) {
-             // setIsFocusModeActive(false); 
-         }
       }
+    }, (error) => {
+        console.error("Session sync error:", error);
     });
     return () => unsubSession();
-  }, [user, sessionRef]);
+  }, [user?.uid]);
 
   const startFocusSession = () => {
     if (focusQueue.length === 0) return;
