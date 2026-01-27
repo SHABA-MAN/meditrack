@@ -703,6 +703,31 @@ const LifeTrack = ({ onBack, user, db }) => {
     } catch (e) { console.warn("Failed to update TG", e); }
   };
 
+  const saveTaskEdit = async (e) => {
+    e.preventDefault();
+    if (!editingTask || !user) return;
+    
+    try {
+       const updateData = {
+          title: editingTask.title,
+          description: editingTask.description || '',
+          isRecurring: !!editingTask.isRecurring,
+          isGroup: !!editingTask.isGroup,
+          subTasks: editingTask.subTasks || [],
+          playlistId: editingTask.playlistId || null,
+          playlistLength: editingTask.playlistLength ? parseInt(editingTask.playlistLength) : 0,
+          watchedEpisodes: editingTask.watchedEpisodes || [],
+          updatedAt: new Date().toISOString()
+       };
+       
+       await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', editingTask.id), updateData);
+       setEditingTask(null);
+    } catch (e) {
+       console.error("Failed to save task", e);
+       alert("فشل حفظ التعديلات");
+    }
+  };
+
   // --- Handlers ---
   // --- Session Persistence ---
   
