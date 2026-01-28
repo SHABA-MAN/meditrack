@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LifeTrack from './LifeTrack';
+import AchievementCalendar from './AchievementCalendar';
+import { logAchievement } from './utils/achievements';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -375,7 +377,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       stageCompleted: task.stage
     });
 
-    // 3. Update Queue UI (Remove the completed task)
+    // 3. Log Achievement for Calendar
+    await logAchievement(db, user.uid, 'study', {
+      subject: task.subject,
+      number: task.number,
+      title: task.title || '',
+      stageCompleted: task.stage
+    });
+
+    // 4. Update Queue UI (Remove the completed task)
     const newQueue = focusQueue.filter(t => t.id !== task.id);
     setFocusQueue(newQueue);
 
@@ -815,6 +825,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={16} className="text-amber-500" /> LifeTrack</button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-emerald-700 transition shadow-sm"><Calendar size={16} /> التقويم</button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
           <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -1215,10 +1226,24 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // Listen for calendar switch event
+  useEffect(() => {
+    const handleCalendarSwitch = () => {
+      setCurrentView('calendar');
+    };
+    
+    window.addEventListener('switchToCalendar', handleCalendarSwitch);
+    return () => window.removeEventListener('switchToCalendar', handleCalendarSwitch);
+  }, []);
+
   if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-slate-600 font-bold">جاري تحميل النظام...</div>;
 
   if (currentView === 'lifetrack') {
     return <LifeTrack onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
+  }
+
+  if (currentView === 'calendar') {
+    return <AchievementCalendar onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
   }
 
   return <MediTrackApp 

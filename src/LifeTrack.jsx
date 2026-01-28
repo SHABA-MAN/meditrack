@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logAchievement } from './utils/achievements';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -37,7 +38,8 @@ import {
   Minus,
   ChevronDown,
   ChevronRight,
-  BrainCircuit
+  BrainCircuit,
+  Calendar
 } from 'lucide-react';
 
 // --- REUSED FROM PARENT (PASSED AS PROPS) ---
@@ -812,10 +814,16 @@ const LifeTrack = ({ onBack, user, db }) => {
        if (confirm("هذا هدف مستمر. هل أتممت جلسة منه؟")) alert("أحسنت! تم تسجيل الإنجاز ✅");
     } else {
        if (confirm("إتمام الهدف وحذف الرسالة نهائياً؟")) {
-          // 1. Delete Locally
+          // 1. Log Achievement for Calendar
+          await logAchievement(db, user.uid, 'task', {
+            title: task.title,
+            stage: COLUMNS[task.stage]?.title || task.stage
+          });
+
+          // 2. Delete Locally
           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
           
-          // 2. Remove from Focus Queue & Sync
+          // 3. Remove from Focus Queue & Sync
           const newQueue = focusQueue.filter(q => q.id !== task.id);
           setFocusQueue(newQueue);
           
@@ -826,7 +834,7 @@ const LifeTrack = ({ onBack, user, db }) => {
              }
           }
 
-          // 3. Check Telegram Sync
+          // 4. Check Telegram Sync
           if (task.isSplit) {
              const siblings = tasks.filter(t => t.telegramId === task.telegramId && t.id !== task.id);
              if (siblings.length === 0) {
@@ -1498,6 +1506,7 @@ const LifeTrack = ({ onBack, user, db }) => {
            </div>
            
            <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
+           <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="تقويم الإنجازات"><Calendar size={16} /> التقويم</button>
            <button onClick={() => setShowAddModal(true)} className="flex items-center justify-center w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="إضافة هدف جديد"><Plus size={24} /></button>
            <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Settings size={20}/></button>
         </div>
