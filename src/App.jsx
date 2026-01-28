@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LifeTrack from './LifeTrack';
 import AchievementCalendar from './AchievementCalendar';
 import { logAchievement } from './utils/achievements';
+import { useIsMobile } from './hooks/useIsMobile';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -98,6 +99,9 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
   // const [user, setUser] = useState(null); // LIFTED UP
   const [loading, setLoading] = useState(false); // Managed by parent mostly, but kept for local loading needs if any
   const [authError, setAuthError] = useState(null);
+  
+  // Mobile Detection
+  const isMobile = useIsMobile();
   
   // Data State
   const [config, setConfig] = useState(null); 
@@ -454,6 +458,12 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
   const removeFromQueue = (taskId) => {
     setFocusQueue(focusQueue.filter(t => t.id !== taskId));
+  };
+
+  // Mobile-friendly: Add to queue without drag
+  const addToQueue = (task) => {
+    if (focusQueue.find(t => t.id === task.id)) return; // Already in queue
+    setFocusQueue([...focusQueue, task]);
   };
 
   // --- Subject Management ---
@@ -928,14 +938,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                 reviews.map(r => (
                   <div 
                     key={r.id}
-                    draggable 
-                    onDragStart={(e) => handleDragStart(e, r)}
-                    className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 cursor-grab active:cursor-grabbing transition-all group relative"
+                    draggable={!isMobile}
+                    onDragStart={(e) => !isMobile && handleDragStart(e, r)}
+                    className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 flex-1">
                          <div className={`mt-1 w-1.5 h-8 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
-                         <div>
+                         <div className="flex-1">
                            <div className="flex items-center gap-2 mb-1">
                              <span className="font-black text-slate-700 text-sm">Lec {r.number}</span>
                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
@@ -948,9 +958,20 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                          </div>
                       </div>
                       
-                      <button onClick={() => openEditModal(r)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-1 transition-opacity">
-                        <Edit2 size={12} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {isMobile && (
+                          <button 
+                            onClick={() => addToQueue(r)} 
+                            className="p-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                            title="إضافة للقائمة"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        )}
+                        <button onClick={() => openEditModal(r)} className={`text-slate-300 hover:text-blue-500 p-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -980,23 +1001,34 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                 news.map(n => (
                   <div 
                     key={n.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, n)}
-                    className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing transition-all group flex items-center justify-between"
+                    draggable={!isMobile}
+                    onDragStart={(e) => !isMobile && handleDragStart(e, n)}
+                    className={`bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
-                     <div className="flex items-center gap-3">
+                     <div className="flex items-center gap-3 flex-1">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
                           {n.subject}
                         </div>
-                        <div>
+                        <div className="flex-1">
                            <span className="font-bold text-slate-700 text-sm block">Lecture {n.number}</span>
                            {n.title && <span className="text-[10px] text-slate-500 block">{n.title}</span>}
                         </div>
                      </div>
                      
-                     <button onClick={() => openEditModal(n)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-blue-500 p-2 transition-opacity">
-                        <Edit2 size={12} />
-                      </button>
+                     <div className="flex items-center gap-1">
+                       {isMobile && (
+                         <button 
+                           onClick={() => addToQueue(n)} 
+                           className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                           title="إضافة للقائمة"
+                         >
+                           <Plus size={16} />
+                         </button>
+                       )}
+                       <button onClick={() => openEditModal(n)} className={`text-slate-300 hover:text-blue-500 p-2 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <Edit2 size={12} />
+                        </button>
+                     </div>
                   </div>
                 ))
               )}

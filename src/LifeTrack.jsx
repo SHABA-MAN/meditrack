@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { logAchievement } from './utils/achievements';
+import { useIsMobile } from './hooks/useIsMobile';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -118,8 +119,14 @@ const LifeTrack = ({ onBack, user, db }) => {
   const [isFocusAnimating, setIsFocusAnimating] = useState(false);
   const [isFreeFocus, setIsFreeFocus] = useState(false);
   
+  // Mobile Detection
+  const isMobile = useIsMobile();
+  
   // YouTube Dropdown State
   const [showYouTubeDropdown, setShowYouTubeDropdown] = useState(false);
+  
+  // Mobile Tab State (for Kanban columns)
+  const [activeTab, setActiveTab] = useState('inbox');
   
   // Group Expansion State
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -1098,7 +1105,7 @@ const LifeTrack = ({ onBack, user, db }) => {
             )}
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-800 mt-2">
-            <div className={`flex gap-1.5 transition-opacity ${isFocusMode ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
+            <div className={`flex gap-1.5 transition-opacity ${isFocusMode || isMobile ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
                 <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
                 <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
             </div>
@@ -1512,9 +1519,10 @@ const LifeTrack = ({ onBack, user, db }) => {
         </div>
       </header>
       
-      <main className="p-3 h-[calc(100vh-80px)] overflow-hidden flex gap-2">
+      <main className={`p-3 h-[calc(100vh-80px)] overflow-hidden flex gap-2 ${isMobile ? 'flex-col' : 'flex-row'}`}>
         
-        {/* 🔥 SESSION BUILDER ZONE 🔥 */}
+        {/* 🔥 SESSION BUILDER ZONE 🔥 - Hidden on mobile, shown as modal/bottom sheet */}
+        {!isMobile && (
         <div 
            className="w-80 flex-shrink-0 h-full flex flex-col rounded-none border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm session-zone"
            onDragEnter={e => {
@@ -1610,19 +1618,47 @@ const LifeTrack = ({ onBack, user, db }) => {
                </div>
             )}
         </div>
+        )}
 
-        {/* 📋 KANBAN BOARD 📋 */}
-        <div className="flex-1 overflow-x-auto h-full">
-            <div className="flex gap-4 h-full min-w-[900px]">
-              {Object.values(COLUMNS).map(col => (
+         {/* 📋 KANBAN BOARD 📋 */}
+        <div className="flex-1 overflow-x-auto h-full flex flex-col">
+            {/* Mobile Tab Bar */}
+            {isMobile && (
+              <div className="flex gap-2 p-2 bg-slate-900/50 border-b border-slate-800 overflow-x-auto">
+                {Object.values(COLUMNS).map(col => (
+                  <button
+                    key={col.id}
+                    onClick={() => setActiveTab(col.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${
+                      activeTab === col.id 
+                        ? `${col.bg} ${col.color} border ${col.color.replace('text-', 'border-')}` 
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <col.icon size={16} />
+                    {col.title}
+                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full">
+                      {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <div className={`flex gap-4 h-full ${isMobile ? 'flex-col overflow-y-auto' : 'min-w-[900px]'}`}>
+              {Object.values(COLUMNS)
+                .filter(col => !isMobile || col.id === activeTab) // Show only active tab on mobile
+                .map(col => (
                 <div 
                   key={col.id} 
                   onDragOver={e => { 
-                    e.preventDefault(); 
-                    e.dataTransfer.dropEffect = 'move';
+                    if (!isMobile) {
+                      e.preventDefault(); 
+                      e.dataTransfer.dropEffect = 'move';
+                    }
                   }} 
-                  onDrop={e => handleDrop(e, col.id)} 
-                  className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group`}
+                  onDrop={e => !isMobile && handleDrop(e, col.id)} 
+                  className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group ${isMobile ? 'min-h-[400px]' : ''}`}
                 >
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                       <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
@@ -1632,26 +1668,47 @@ const LifeTrack = ({ onBack, user, db }) => {
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                       {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).map(task => renderTaskCard(task, false, {
-                        draggable: true,
-                        onDragStart: e => handleDragStart(e, task),
+                        draggable: !isMobile,
+                        onDragStart: e => !isMobile && handleDragStart(e, task),
                         onDragOver: e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
+                            if (!isMobile) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.currentTarget.classList.add('border-purple-500', 'bg-purple-950/20');
+                            }
                         },
                         onDragLeave: e => {
-                            e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
+                            if (!isMobile) {
+                              e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
+                            }
                         },
                         onDrop: e => {
-                            e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
-                            handleTaskDrop(e, task);
+                            if (!isMobile) {
+                              e.currentTarget.classList.remove('border-purple-500', 'bg-purple-950/20');
+                              handleTaskDrop(e, task);
+                            }
                         }
                       }))}
                     </div>
                 </div>
               ))}
-            </div>
+             </div>
         </div>
+        
+        {/* Mobile Session Queue FAB */}
+        {isMobile && focusQueue.length > 0 && (
+          <button
+            onClick={() => setIsFocusModeActive(true)}
+            className="fixed bottom-6 right-6 w-16 h-16 bg-amber-600 hover:bg-amber-500 text-white rounded-full shadow-2xl flex items-center justify-center z-50 animate-pulse"
+          >
+            <div className="relative">
+              <Zap size={28} fill="white" />
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                {focusQueue.length}
+              </span>
+            </div>
+          </button>
+        )}
       </main>
 
       {/* Settings Modal */}
