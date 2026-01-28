@@ -1034,7 +1034,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                 {task.isGroup && (
                 <button
                     onClick={(e) => { e.stopPropagation(); toggleGroupExpansion(task.id); }}
-                    className="p-0.5 hover:bg-slate-800 rounded transition text-purple-400"
+                    className="p-0.5 hover:bg-slate-800 rounded-none transition text-purple-400"
                 >
                     {expandedGroups.has(task.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
@@ -1071,7 +1071,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                             updatedAt: new Date().toISOString()
                         });
                         }}
-                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition flex-shrink-0 ${
+                        className={`w-3.5 h-3.5 rounded-none border flex items-center justify-center transition flex-shrink-0 ${
                         subTask.completed 
                             ? 'bg-emerald-600 border-emerald-500' 
                             : 'border-slate-600 hover:border-slate-500'
@@ -1089,7 +1089,7 @@ const LifeTrack = ({ onBack, user, db }) => {
             )}
             
             {task.isGroup && (!task.subTasks || task.subTasks.length === 0) && (
-            <div className="mb-3 text-xs text-slate-500 italic text-center py-2 bg-slate-800/30 rounded">
+            <div className="mb-3 text-xs text-slate-500 italic text-center py-2 bg-slate-800/30 rounded-none">
                 اسحب هدف هنا لإضافته للمجموعة
             </div>
             )}
@@ -1106,8 +1106,8 @@ const LifeTrack = ({ onBack, user, db }) => {
 
             <div className="flex items-center justify-between pt-1.5 border-t border-slate-800 mt-1.5">
             <div className={`flex gap-1 transition-opacity ${isFocusMode || isMobile ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
-                <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={10}/></button>
-                <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={10}/></button>
+                <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-0.5 hover:bg-slate-700 rounded-none text-slate-400 hover:text-blue-400"><Edit3 size={10}/></button>
+                <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-0.5 hover:bg-slate-700 rounded-none text-slate-400 hover:text-red-400"><Trash2 size={10}/></button>
             </div>
             <div className="flex items-center gap-1.5">
                 {task.playlistId && task.playlistLength > 0 && (
@@ -1116,11 +1116,11 @@ const LifeTrack = ({ onBack, user, db }) => {
                     </span>
                 )}
                 {task.isGroup && (
-                <span className="text-[8px] text-purple-400 font-mono bg-purple-950/30 px-1 py-0.5 rounded">
+                <span className="text-[8px] text-purple-400 font-mono bg-purple-950/30 px-1 py-0.5 rounded-none">
                     {task.subTasks?.length || 0}
                 </span>
                 )}
-                <button onClick={() => completeTask(task)} className="flex items-center gap-0.5 text-[8px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-1.5 py-0.5 rounded transition"><CheckCircle size={9} /> إنجاز</button>
+                <button onClick={() => completeTask(task)} className="flex items-center gap-0.5 text-[8px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-1.5 py-0.5 rounded-none transition"><CheckCircle size={9} /> إنجاز</button>
             </div>
             </div>
         </div>
@@ -1192,7 +1192,7 @@ const LifeTrack = ({ onBack, user, db }) => {
 
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20 px-2 py-1.5 flex justify-between items-center">
         <div className="flex items-center gap-2">
-           <button onClick={onBack} className="bg-slate-800 p-1.5 rounded text-xs text-slate-400 hover:text-white">رجوع للموقع</button>
+           <button onClick={onBack} className="bg-slate-800 p-1.5 rounded-none text-xs text-slate-400 hover:text-white">رجوع للموقع</button>
            <div className="bg-amber-500/10 p-1.5 rounded-lg text-amber-500 border border-amber-500/20"><Target size={18} /></div>
            <h1 className="font-bold text-base tracking-wide">LifeTrack</h1>
         </div>
@@ -1251,19 +1251,19 @@ const LifeTrack = ({ onBack, user, db }) => {
                                   {/* Thumbnail */}
                                   {/* Thumbnail */}
                                   {task.thumbnail ? (
-                                     <img src={task.thumbnail} className="w-20 h-14 object-cover rounded" alt=""/>
+                                     <img src={task.thumbnail} className="w-20 h-14 object-cover rounded-none" alt=""/>
                                   ) : task.soundCloudUrl ? (
-                                       <div className="w-20 h-14 bg-orange-900/20 rounded flex items-center justify-center text-orange-500">
+                                       <div className="w-20 h-14 bg-orange-900/20 rounded-none flex items-center justify-center text-orange-500">
                                           <Zap size={20}/>
                                        </div>
                                   ) : task.videoId ? (
                                    <img 
                                      src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`} 
-                                     className="w-20 h-14 object-cover rounded" 
+                                     className="w-20 h-14 object-cover rounded-none" 
                                      alt=""
                                    />
                                  ) : (
-                                   <div className="w-20 h-14 bg-slate-700 rounded flex items-center justify-center">
+                                   <div className="w-20 h-14 bg-slate-700 rounded-none flex items-center justify-center">
                                      <Layers size={20} className="text-slate-500" />
                                    </div>
                                  )}
@@ -1280,8 +1280,8 @@ const LifeTrack = ({ onBack, user, db }) => {
                                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                    {/* Edit & Delete */}
                                    <div className="flex gap-1 justify-end mb-1 border-b border-white/10 pb-1">
-                                      <button onClick={(e) => { e.stopPropagation(); setEditingTask({...task, originalTitle: task.title}); }} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
-                                      <button onClick={(e) => { e.stopPropagation(); confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id)); }} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
+                                      <button onClick={(e) => { e.stopPropagation(); setEditingTask({...task, originalTitle: task.title}); }} className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
+                                      <button onClick={(e) => { e.stopPropagation(); confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id)); }} className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
                                    </div>
                                    
                                    {/* Move to other stages */}
@@ -1296,7 +1296,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                              updatedAt: new Date().toISOString() 
                                            });
                                          }}
-                                         className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                         className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-white transition"
                                          title={targetCol.title}
                                        >
                                          <targetCol.icon size={12} />
@@ -1321,7 +1321,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                          setFocusQueue(newQueue);
                                        }
                                      }}
-                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold mt-1"
+                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded-none transition text-[10px] font-bold mt-1"
                                      title="إضافة للتركيز"
                                    >
                                      <Zap size={12} />
@@ -1339,8 +1339,8 @@ const LifeTrack = ({ onBack, user, db }) => {
                                    {task.subTasks.map((subTask, idx) => {
                                      const subTaskObj = tasks.find(t => t.id === subTask.id);
                                      return (
-                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded">
-                                         <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded-none">
+                                         <div className={`w-3 h-3 rounded-none border flex items-center justify-center flex-shrink-0 ${
                                            subTask.completed 
                                              ? 'bg-emerald-600 border-emerald-500' 
                                              : 'border-slate-600'
@@ -1388,21 +1388,21 @@ const LifeTrack = ({ onBack, user, db }) => {
                                  {task.thumbnail ? (
                                    <img 
                                      src={task.thumbnail} 
-                                     className="w-20 h-14 object-cover rounded" 
+                                     className="w-20 h-14 object-cover rounded-none" 
                                      alt=""
                                    />
                                  ) : task.soundCloudUrl ? (
-                                     <div className="w-20 h-14 bg-orange-900/20 rounded flex items-center justify-center text-orange-500">
+                                     <div className="w-20 h-14 bg-orange-900/20 rounded-none flex items-center justify-center text-orange-500">
                                         <Zap size={20}/>
                                      </div>
                                   ) : task.videoId ? (
                                    <img 
                                      src={`https://img.youtube.com/vi/${task.videoId}/default.jpg`} 
-                                     className="w-20 h-14 object-cover rounded" 
+                                     className="w-20 h-14 object-cover rounded-none" 
                                      alt=""
                                    />
                                  ) : (
-                                   <div className="w-20 h-14 bg-slate-700 rounded flex items-center justify-center">
+                                   <div className="w-20 h-14 bg-slate-700 rounded-none flex items-center justify-center">
                                      <Layers size={20} className="text-slate-500" />
                                    </div>
                                  )}
@@ -1418,8 +1418,8 @@ const LifeTrack = ({ onBack, user, db }) => {
                                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                    {/* Edit & Delete */}
                                    <div className="flex gap-1 justify-end mb-1 border-b border-white/10 pb-1">
-                                      <button onClick={(e) => { e.stopPropagation(); setEditingTask({...task, originalTitle: task.title}); }} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
-                                      <button onClick={(e) => { e.stopPropagation(); confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id)); }} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
+                                      <button onClick={(e) => { e.stopPropagation(); setEditingTask({...task, originalTitle: task.title}); }} className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
+                                      <button onClick={(e) => { e.stopPropagation(); confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id)); }} className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
                                    </div>
                                    
                                    <div className="flex gap-1 justify-end">
@@ -1433,7 +1433,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                              updatedAt: new Date().toISOString() 
                                            });
                                          }}
-                                         className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                         className="p-1 hover:bg-slate-700 rounded-none text-slate-400 hover:text-white transition"
                                          title={targetCol.title}
                                        >
                                          <targetCol.icon size={12} />
@@ -1457,7 +1457,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                          setFocusQueue(newQueue);
                                        }
                                      }}
-                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded transition text-[10px] font-bold mt-1"
+                                     className="p-1 bg-amber-600/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded-none transition text-[10px] font-bold mt-1"
                                      title="إضافة للتركيز"
                                    >
                                      <Zap size={12} />
@@ -1475,8 +1475,8 @@ const LifeTrack = ({ onBack, user, db }) => {
                                    {task.subTasks.map((subTask, idx) => {
                                      const subTaskObj = tasks.find(t => t.id === subTask.id);
                                      return (
-                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded">
-                                         <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                                       <div key={subTask.id || idx} className="flex items-center gap-2 text-[10px] bg-slate-900/50 p-1.5 rounded-none">
+                                         <div className={`w-3 h-3 rounded-none border flex items-center justify-center flex-shrink-0 ${
                                            subTask.completed 
                                              ? 'bg-emerald-600 border-emerald-500' 
                                              : 'border-slate-600'
@@ -1572,16 +1572,16 @@ const LifeTrack = ({ onBack, user, db }) => {
                             key={q.id}                             className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
                            >
                               {q.soundCloudUrl ? (
-                                 q.thumbnail ? <img src={q.thumbnail} className="w-full h-16 object-cover rounded mb-1.5" alt=""/> : <div className="w-full h-16 bg-orange-900/20 rounded mb-1.5 flex items-center justify-center"><Zap size={24} className="text-orange-500"/></div>
+                                 q.thumbnail ? <img src={q.thumbnail} className="w-full h-16 object-cover rounded-none mb-1.5" alt=""/> : <div className="w-full h-16 bg-orange-900/20 rounded-none mb-1.5 flex items-center justify-center"><Zap size={24} className="text-orange-500"/></div>
                               ) : q.videoId && (
                                <img 
                                  src={`https://img.youtube.com/vi/${q.videoId}/default.jpg`} 
-                                 className="w-full h-16 object-cover rounded mb-1.5" 
+                                 className="w-full h-16 object-cover rounded-none mb-1.5" 
                                  alt="" 
                                />
                              )}
                              {q.isSubTask && (
-                               <div className="absolute top-1 right-1 bg-purple-600/80 text-white text-[8px] px-1 py-0.5 rounded">
+                               <div className="absolute top-1 right-1 bg-purple-600/80 text-white text-[8px] px-1 py-0.5 rounded-none">
                                  <Layers size={8} />
                                </div>
                              )}
@@ -1590,7 +1590,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                              </p>
                              <button 
                                onClick={() => removeFromQueue(q.id)} 
-                               className="absolute top-1 left-1 text-slate-500 hover:text-red-400 transition opacity-0 group-hover/item:opacity-100 bg-slate-900/80 rounded p-0.5"
+                               className="absolute top-1 left-1 text-slate-500 hover:text-red-400 transition opacity-0 group-hover/item:opacity-100 bg-slate-900/80 rounded-none p-0.5"
                              >
                                <X size={10}/>
                              </button>
@@ -1754,7 +1754,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                       }
                       alert(`تم تحديث ${fixCount} هدف بنجاح!`);
                     }}
-                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-xs font-bold transition flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-none text-xs font-bold transition flex items-center justify-center gap-2"
                   >
                     <RefreshCw size={12}/> إصلاح ومسح أهداف اليوتيوب
                   </button>
@@ -1777,7 +1777,7 @@ const LifeTrack = ({ onBack, user, db }) => {
              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">الوصف (اختياري)</label>
              <textarea className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none h-20 mb-4 resize-none" value={editingTask.description || ''} onChange={e => setEditingTask({...editingTask, description: e.target.value})} placeholder="وصف الهدف أو ملاحظات" />
              
-             <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
+             <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setEditingTask({...editingTask, isRecurring: !editingTask.isRecurring})}><div className={`w-5 h-5 rounded-none border flex items-center justify-center ${editingTask.isRecurring ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>{editingTask.isRecurring && <CheckCircle size={14} className="text-white"/>}</div><span className="text-sm text-slate-300">هدف مستمر</span></div>
 
              {/* 📦 GROUP SETTINGS 📦 */}
              <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
@@ -1789,7 +1789,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                       subTasks: newIsGroup ? (editingTask.subTasks || []) : []
                    });
                 }}>
-                   <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.isGroup ? 'bg-purple-600 border-purple-600' : 'border-slate-600'}`}>
+                   <div className={`w-5 h-5 rounded-none border flex items-center justify-center ${editingTask.isGroup ? 'bg-purple-600 border-purple-600' : 'border-slate-600'}`}>
                       {editingTask.isGroup && <Layers size={12} className="text-white"/>}
                    </div>
                    <span className="text-sm font-bold text-slate-300">تحويل إلى مجموعة (أهداف مكدسة)</span>
@@ -1805,7 +1805,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                const newSubTasks = [...(editingTask.subTasks || []), { id: Date.now(), title: '', completed: false }];
                                setEditingTask({...editingTask, subTasks: newSubTasks});
                             }}
-                            className="p-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition flex items-center gap-1"
+                            className="p-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-none transition flex items-center gap-1"
                          >
                             <Plus size={12}/>
                             <span className="text-xs font-bold">إضافة</span>
@@ -1824,7 +1824,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                      setEditingTask({...editingTask, subTasks: newSubTasks});
                                   }}
                                   placeholder={`هدف فرعي ${idx + 1}`}
-                                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
+                                  className="flex-1 bg-slate-950 border border-slate-700 rounded-none px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
                                />
                                <button
                                   type="button"
@@ -1832,7 +1832,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                      const newSubTasks = (editingTask.subTasks || []).filter((_, i) => i !== idx);
                                      setEditingTask({...editingTask, subTasks: newSubTasks});
                                   }}
-                                  className="p-1 hover:bg-red-600/20 text-red-400 rounded transition"
+                                  className="p-1 hover:bg-red-600/20 text-red-400 rounded-none transition"
                                >
                                   <Minus size={14}/>
                                </button>
@@ -1864,7 +1864,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                       setEditingTask({...editingTask, playlistId: null, playlistLength: 0, watchedEpisodes: []});
                    }
                 }}>
-                   <div className={`w-5 h-5 rounded border flex items-center justify-center ${editingTask.playlistId ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
+                   <div className={`w-5 h-5 rounded-none border flex items-center justify-center ${editingTask.playlistId ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
                       {editingTask.playlistId && <Layers size={12} className="text-white"/>}
                    </div>
                    <span className="text-sm font-bold text-slate-300">تفعيل نظام السلسلة / القائمة</span>
@@ -1876,7 +1876,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                       <label className="text-xs font-bold text-slate-400 uppercase">عدد فيديوهات السلسلة</label>
                       <input 
                         type="number" 
-                        className="bg-slate-900 border border-slate-700 w-20 rounded text-center text-white py-1 outline-none focus:border-amber-500"
+                        className="bg-slate-900 border border-slate-700 w-20 rounded-none text-center text-white py-1 outline-none focus:border-amber-500"
                         value={editingTask.playlistLength || ''}
                         onChange={e => setEditingTask({...editingTask, playlistLength: e.target.value})}
                         placeholder="0"
@@ -1900,7 +1900,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                                    else newWatched.push(idx);
                                    setEditingTask({...editingTask, watchedEpisodes: newWatched});
                                  }}
-                                 className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center transition border ${
+                                 className={`w-8 h-8 rounded-none text-xs font-bold flex items-center justify-center transition border ${
                                    isWatched 
                                    ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-900/50 shadow-md' 
                                    : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500'
@@ -1959,7 +1959,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                   <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-slate-300"><X size={20}/></button>
                </div>
                
-               <p className="text-xs text-slate-400 mb-4 bg-slate-800/50 p-3 rounded border border-slate-800">
+               <p className="text-xs text-slate-400 mb-4 bg-slate-800/50 p-3 rounded-none border border-slate-800">
                   يمكنك الكتابة مباشرة أو لصق روابط يوتيوب. <br/>
                   لإنشاء قائمة مكدسة، استخدم (-) في بداية السطور الفرعية.
                </p>

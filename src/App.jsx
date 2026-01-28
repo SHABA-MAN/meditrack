@@ -593,16 +593,16 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4" dir="rtl">
-        <div className="bg-white p-10 rounded-lg shadow-md border border-gray-200 w-full max-w-sm text-center">
-          <div className="w-16 h-16 bg-slate-900 text-white rounded-lg flex items-center justify-center mx-auto mb-6">
+        <div className="bg-white p-10 rounded-none shadow-md border border-gray-200 w-full max-w-sm text-center">
+          <div className="w-16 h-16 bg-slate-900 text-white rounded-none flex items-center justify-center mx-auto mb-6">
              <BrainCircuit size={32} />
           </div>
           <h1 className="text-2xl font-bold text-slate-800 mb-2">MediTrack Pro</h1>
           <p className="text-slate-500 mb-8 text-sm">نظام السحب والإفلات الذكي للمذاكرة</p>
-          <button onClick={handleGoogleLogin} className="w-full bg-slate-800 text-white py-3 rounded-md font-bold flex items-center justify-center gap-2 mb-3 hover:bg-slate-900 transition">
+          <button onClick={handleGoogleLogin} className="w-full bg-slate-800 text-white py-3 rounded-none font-bold flex items-center justify-center gap-2 mb-3 hover:bg-slate-900 transition">
             <LogIn size={18} /> تسجيل الدخول (Google)
           </button>
-          <button onClick={handleGuestLogin} className="w-full bg-white text-slate-600 border border-slate-300 py-3 rounded-md font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition">
+          <button onClick={handleGuestLogin} className="w-full bg-white text-slate-600 border border-slate-300 py-3 rounded-none font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition">
             <User size={18} /> تجربة كزائر
           </button>
           {authError && <div className="mt-4 p-3 bg-red-50 text-red-600 text-xs font-bold border border-red-200">{authError}</div>}
@@ -629,14 +629,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
           {/* Top Bar (Minimal) */}
           <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20 pointer-events-none">
              <div className="pointer-events-auto flex items-center gap-3">
-               <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-full bg-slate-900/50 backdrop-blur-md">
+               <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-none bg-slate-900/50 backdrop-blur-md">
                  {isFreeFocus ? 'Free Session' : `Active Tasks: ${focusQueue.length}`}
                </span>
                
                {/* SWITCHER BUTTON */}
                <button 
                  onClick={onSwitchToLifeTrack}
-                 className="flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded-full text-xs font-bold transition-all backdrop-blur-md"
+                 className="flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded-none text-xs font-bold transition-all backdrop-blur-md"
                  title="الذهاب إلى LifeTrack (ستبقى الجلسة محفوظة)"
                >
                  <Zap size={14} fill="currentColor" />
@@ -647,7 +647,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
              <div className="pointer-events-auto">
                 <button 
                   onClick={closeFocusMode} 
-                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-full"
+                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-none"
                 >
                   <X size={24} />
                 </button>
@@ -665,7 +665,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                  </p>
                  <button 
                    onClick={closeFocusMode} 
-                   className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-full text-sm font-bold transition-all duration-300"
+                   className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-none text-sm font-bold transition-all duration-300"
                  >
                     إنهاء الجلسة
                  </button>
@@ -677,10 +677,10 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                    {focusQueue.map((task) => (
                      <div 
                        key={task.id} 
-                       className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
+                       className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-none shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
                      >
                         {/* Subject Badge */}
-                        <div className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                        <div className={`inline-block px-4 py-1.5 rounded-none text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
                           {task.subject}
                         </div>
 
@@ -711,7 +711,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                         {/* Minimal Done Button */}
                         <button 
                           onClick={() => completeTask(task)}
-                          className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
+                          className="w-16 h-16 rounded-none bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
                           title="إتمام"
                         >
                            <CheckCircle size={32} />
@@ -729,7 +729,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       {/* --- EDIT MODAL --- */}
       {editingTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+           <div className="bg-white rounded-none shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
                    <Edit2 size={16} className="text-blue-500" /> تعديل المحاضرة
@@ -738,7 +738,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
               </div>
               <form onSubmit={handleSaveTaskDetails} className="p-4 space-y-4">
                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${SUBJECTS[editingTask.subject]?.badge}`}>{editingTask.subject}</span>
+                    <span className={`px-2 py-0.5 rounded-none text-xs font-bold text-white ${SUBJECTS[editingTask.subject]?.badge}`}>{editingTask.subject}</span>
                     <span className="font-bold text-sm text-slate-700">Lecture {editingTask.number}</span>
                  </div>
 
@@ -746,7 +746,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                     <label className="block text-xs font-bold text-slate-500 mb-1">اسم المحاضرة (اختياري)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                      className="w-full border border-slate-200 rounded-none px-3 py-2 text-sm focus:border-blue-500 outline-none"
                       placeholder="مثلاً: Intro to Bones"
                       value={editingTask.title || ''}
                       onChange={e => setEditingTask({...editingTask, title: e.target.value})}
@@ -756,7 +756,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                  <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">وصف / ملاحظات</label>
                     <textarea 
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none h-20 resize-none"
+                      className="w-full border border-slate-200 rounded-none px-3 py-2 text-sm focus:border-blue-500 outline-none h-20 resize-none"
                       placeholder="ملاحظات سريعة..."
                       value={editingTask.description || ''}
                       onChange={e => setEditingTask({...editingTask, description: e.target.value})}
@@ -769,28 +769,28 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                        <button 
                          type="button"
                          onClick={() => setEditingTask({...editingTask, difficulty: 'easy'})}
-                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'easy' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                         className={`flex-1 py-2 text-xs font-bold rounded-none border transition ${editingTask.difficulty === 'easy' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-400'}`}
                        >
                          سهلة 🙂
                        </button>
                        <button 
                          type="button"
                          onClick={() => setEditingTask({...editingTask, difficulty: 'normal'})}
-                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'normal' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                         className={`flex-1 py-2 text-xs font-bold rounded-none border transition ${editingTask.difficulty === 'normal' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}
                        >
                          عادية 😐
                        </button>
                        <button 
                          type="button"
                          onClick={() => setEditingTask({...editingTask, difficulty: 'hard'})}
-                         className={`flex-1 py-2 text-xs font-bold rounded-lg border transition ${editingTask.difficulty === 'hard' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                         className={`flex-1 py-2 text-xs font-bold rounded-none border transition ${editingTask.difficulty === 'hard' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-200 text-slate-400'}`}
                        >
                          صعبة 🥵
                        </button>
                     </div>
                  </div>
 
-                 <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-slate-800 transition mt-2">
+                 <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-none font-bold text-sm hover:bg-slate-800 transition mt-2">
                    حفظ التعديلات
                  </button>
               </form>
@@ -804,7 +804,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       <nav className="bg-white border-b border-gray-200 px-4 py-2 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
         
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="bg-slate-900 text-white p-1.5 rounded-md">
+          <div className="bg-slate-900 text-white p-1.5 rounded-none">
             <BrainCircuit size={16} />
           </div>
           <div>
@@ -818,8 +818,8 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
             {Object.keys(SUBJECTS).map(subj => {
               const stats = getSubjectStats(subj);
               return (
-                <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-lg p-1 min-w-[50px] shrink-0">
-                  <span className={`text-[9px] font-black px-1.5 rounded-sm mb-0.5 text-white ${SUBJECTS[subj].badge}`}>
+                <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-none p-1 min-w-[50px] shrink-0">
+                  <span className={`text-[9px] font-black px-1.5 rounded-none mb-0.5 text-white ${SUBJECTS[subj].badge}`}>
                     {subj}
                   </span>
                   <div className="flex items-end gap-0.5 leading-none">
@@ -834,12 +834,12 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         </div>
         
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-2 py-1 rounded-md text-xs font-bold items-center gap-1.5 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={14} className="text-amber-500" /> LifeTrack</button>
-          <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-2 py-1 rounded-md text-xs font-bold items-center gap-1.5 hover:bg-emerald-700 transition shadow-sm"><Calendar size={14} /> التقويم</button>
-          <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={16} /></button>
-          <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={16} /></button>
+          <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={14} className="text-amber-500" /> LifeTrack</button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-emerald-700 transition shadow-sm"><Calendar size={14} /> التقويم</button>
+          <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الدليل"><Info size={16} /></button>
+          <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الإعدادات"><Settings size={16} /></button>
           <div className="h-5 w-px bg-gray-300 mx-1"></div>
-          <button onClick={handleLogout} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition" title="خروج"><LogOut size={16} /></button>
+          <button onClick={handleLogout} className="p-1.5 text-red-500 hover:bg-red-50 rounded-none transition" title="خروج"><LogOut size={16} /></button>
         </div>
       </nav>
 
@@ -850,7 +850,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         <div 
           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
-          className={`lg:col-span-1 rounded-3xl transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
+          className={`lg:col-span-1 rounded-none transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
         >
            {/* Background Pattern for Empty State */}
            {focusQueue.length === 0 && (
@@ -860,7 +860,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
            {/* Placeholder if empty */}
            {focusQueue.length === 0 ? (
              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 z-10">
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                <div className="w-16 h-16 bg-white rounded-none shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
                   <Layers size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
                 <h3 className="text-base font-black text-slate-800 mb-1.5 tracking-tight">منطقة التركيز</h3>
@@ -870,7 +870,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                 
                 <button 
                   onClick={startFreeFocus}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-1.5 group-hover:translate-y-1 mx-auto"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-none text-[10px] font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-1.5 group-hover:translate-y-1 mx-auto"
                 >
                   <Coffee size={14} />
                   جلسة حرة (بدون مواد)
@@ -886,7 +886,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                   </div>
                   <button 
                     onClick={startFocusSession}
-                    className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[10px] shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-1.5 transform active:scale-95"
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-none font-bold text-[10px] shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-1.5 transform active:scale-95"
                   >
                     <Play size={12} fill="currentColor" />
                     ابدأ
@@ -896,9 +896,9 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                 {/* List */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
                   {focusQueue.map((task, idx) => (
-                    <div key={idx} className="bg-white p-2 rounded-lg border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
+                    <div key={idx} className="bg-white p-2 rounded-none border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
                        <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
+                          <div className={`w-8 h-8 rounded-none flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
                           </div>
                           <div>
@@ -906,7 +906,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                             {task.title && <span className="text-[9px] font-medium text-slate-500">{task.title}</span>}
                           </div>
                        </div>
-                       <button onClick={() => removeFromQueue(task.id)} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                       <button onClick={() => removeFromQueue(task.id)} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-none transition-colors">
                          <X size={14} />
                        </button>
                     </div>
@@ -917,15 +917,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         </div>
 
         {/* COLUMN 2: REVIEWS */}
-        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
+        <div className="lg:col-span-1 bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
             <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div className="flex items-center gap-1.5">
-                <div className="p-1 bg-amber-100/50 text-amber-600 rounded-lg">
+                <div className="p-1 bg-amber-100/50 text-amber-600 rounded-none">
                   <BrainCircuit size={14} />
                 </div>
                 <span className="font-bold text-sm text-slate-700">المراجعات</span>
               </div>
-              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{reviews.length}</span>
+              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-none">{reviews.length}</span>
             </div>
             
             <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
@@ -940,15 +940,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                     key={r.id}
                     draggable={!isMobile}
                     onDragStart={(e) => !isMobile && handleDragStart(e, r)}
-                    className={`bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`bg-white p-2.5 rounded-none border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex gap-2 flex-1">
-                         <div className={`mt-0.5 w-1 h-6 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
+                         <div className={`mt-0.5 w-1 h-6 rounded-none ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
                          <div className="flex-1">
                            <div className="flex items-center gap-1.5 mb-0.5">
                              <span className="font-black text-slate-700 text-xs">Lec {r.number}</span>
-                             <span className={`text-[8px] font-bold px-1 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
+                             <span className={`text-[8px] font-bold px-1 py-0.5 rounded-none text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
                            </div>
                            <div className="flex flex-wrap gap-1.5 text-[9px]">
                               {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
@@ -962,7 +962,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                         {isMobile && (
                           <button 
                             onClick={() => addToQueue(r)} 
-                            className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                            className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-none transition-colors"
                             title="إضافة للقائمة"
                           >
                             <Plus size={14} />
@@ -980,15 +980,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         </div>
 
         {/* COLUMN 3: NEW */}
-        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
+        <div className="lg:col-span-1 bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
             <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div className="flex items-center gap-1.5">
-                <div className="p-1 bg-blue-100/50 text-blue-600 rounded-lg">
+                <div className="p-1 bg-blue-100/50 text-blue-600 rounded-none">
                   <BookOpen size={14} />
                 </div>
                 <span className="font-bold text-sm text-slate-700">الجديد</span>
               </div>
-              <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{news.length}</span>
+              <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-none">{news.length}</span>
             </div>
             
             <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
@@ -1003,10 +1003,10 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                     key={n.id}
                     draggable={!isMobile}
                     onDragStart={(e) => !isMobile && handleDragStart(e, n)}
-                    className={`bg-white p-2 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`bg-white p-2 rounded-none border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                      <div className="flex items-center gap-2 flex-1">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
+                        <div className={`w-7 h-7 rounded-none flex items-center justify-center text-[9px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
                           {n.subject}
                         </div>
                         <div className="flex-1">
@@ -1019,7 +1019,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                        {isMobile && (
                          <button 
                            onClick={() => addToQueue(n)} 
-                           className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                           className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-none transition-colors"
                            title="إضافة للقائمة"
                          >
                            <Plus size={14} />
@@ -1040,7 +1040,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       {/* SETTINGS MODAL */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="bg-white w-full max-w-2xl rounded-none shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="bg-slate-50 p-4 border-b flex justify-between items-center">
               <div className="flex gap-4 overflow-x-auto">
                  <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab==='guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
@@ -1058,7 +1058,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                   <div className="space-y-4 text-slate-600 text-sm">
                      <h3 className="font-bold text-slate-800">طريقة الاستخدام الجديدة 🖱️</h3>
                      <p>النظام الآن يعتمد على السحب والإفلات للتركيز العميق.</p>
-                     <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-md border border-blue-100 text-blue-800">
+                     <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-none border border-blue-100 text-blue-800">
                         <li><strong>الخطوة 1:</strong> اسحب أي عدد من المحاضرات (1، 2، أو أكثر) إلى منطقة التركيز.</li>
                         <li><strong>الخطوة 2:</strong> اضغط "ابدأ الجلسة" للدخول في وضع التركيز.</li>
                         <li><strong>الخطوة 3:</strong> كل إنجاز سيتم حفظه تلقائياً في سجل الجلسات.</li>
@@ -1072,15 +1072,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                        <h3 className="font-bold text-slate-800 text-sm mb-2">المواد الحالية</h3>
                        <div className="grid grid-cols-1 gap-2">
                           {Object.entries(subjects).map(([code, subj]) => (
-                             <div key={code} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                             <div key={code} className="flex items-center justify-between p-3 border rounded-none bg-gray-50">
                                 <div className="flex items-center gap-3">
-                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${subj.badge}`}>{code}</div>
+                                   <div className={`w-8 h-8 rounded-none flex items-center justify-center text-[10px] font-bold text-white ${subj.badge}`}>{code}</div>
                                    <div>
                                       <p className="font-bold text-sm text-slate-800">{subj.name}</p>
                                       <p className="text-[10px] text-slate-400">Code: {code}</p>
                                    </div>
                                 </div>
-                                <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-full hover:bg-red-50 transition" title="حذف المادة">
+                                <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-none hover:bg-red-50 transition" title="حذف المادة">
                                   <Trash2 size={14}/>
                                 </button>
                              </div>
@@ -1088,7 +1088,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                        </div>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="bg-slate-50 p-4 rounded-none border border-slate-200">
                        <h3 className="font-bold text-slate-800 text-sm mb-3">إضافة مادة جديدة</h3>
                        <form onSubmit={handleAddSubject} className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
@@ -1097,7 +1097,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                <input 
                                  type="text" 
                                  placeholder="مثلاً ANAT" 
-                                 className="w-full px-3 py-2 rounded-md border text-sm uppercase font-mono"
+                                 className="w-full px-3 py-2 rounded-none border text-sm uppercase font-mono"
                                  value={newSubject.code}
                                  onChange={e => setNewSubject({...newSubject, code: e.target.value.toUpperCase()})}
                                  maxLength={5}
@@ -1108,7 +1108,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                <input 
                                  type="text" 
                                  placeholder="مثلاً تشريح" 
-                                 className="w-full px-3 py-2 rounded-md border text-sm"
+                                 className="w-full px-3 py-2 rounded-none border text-sm"
                                  value={newSubject.name}
                                  onChange={e => setNewSubject({...newSubject, name: e.target.value})}
                                />
@@ -1123,7 +1123,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                     key={key}
                                     type="button"
                                     onClick={() => setNewSubject({...newSubject, theme: key})}
-                                    className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-2 transition ${newSubject.theme === key ? 'border-slate-800 scale-110' : 'border-transparent'} ${theme.badge}`}
+                                    className={`w-8 h-8 shrink-0 rounded-none flex items-center justify-center border-2 transition ${newSubject.theme === key ? 'border-slate-800 scale-110' : 'border-transparent'} ${theme.badge}`}
                                     title={theme.name}
                                   >
                                     {newSubject.theme === key && <CheckCircle size={14} className="text-white"/>}
@@ -1132,7 +1132,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                             </div>
                           </div>
 
-                          <button type="submit" className="w-full bg-slate-900 text-white py-2 rounded-md font-bold text-sm hover:bg-black transition flex items-center justify-center gap-2">
+                          <button type="submit" className="w-full bg-slate-900 text-white py-2 rounded-none font-bold text-sm hover:bg-black transition flex items-center justify-center gap-2">
                              <Plus size={16} /> إضافة المادة
                           </button>
                        </form>
@@ -1144,13 +1144,13 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                   <form onSubmit={handleSaveConfig} className="space-y-4">
                      <div className="grid grid-cols-2 gap-4">
                         {Object.keys(SUBJECTS).map(subj => (
-                           <div key={subj} className="flex items-center gap-2 border p-2 rounded-md">
-                              <span className={`w-10 font-bold text-center text-xs py-1 rounded ${SUBJECTS[subj].color}`}>{subj}</span>
+                           <div key={subj} className="flex items-center gap-2 border p-2 rounded-none">
+                              <span className={`w-10 font-bold text-center text-xs py-1 rounded-none ${SUBJECTS[subj].color}`}>{subj}</span>
                               <input type="number" min="0" className="w-full text-center outline-none font-bold text-slate-700" value={tempConfig[subj]} onChange={e => setTempConfig({...tempConfig, [subj]: e.target.value})} />
                            </div>
                         ))}
                      </div>
-                     <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded-md font-bold hover:bg-slate-900 mt-4">حفظ الأعداد</button>
+                     <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded-none font-bold hover:bg-slate-900 mt-4">حفظ الأعداد</button>
                      <div className="mt-6 pt-4 border-t">
                         <button type="button" onClick={markFirstFiveAsStudied} className="text-amber-600 text-xs font-bold hover:underline flex items-center gap-1"><FastForward size={14}/> تفعيل مراجعة أول 5 محاضرات فوراً</button>
                      </div>
@@ -1161,14 +1161,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                   <div>
                      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
                         {Object.keys(SUBJECTS).map(subj => (
-                           <button key={subj} onClick={() => setSelectedManageSubject(subj)} className={`px-3 py-1 rounded text-xs font-bold border transition ${selectedManageSubject === subj ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}>
+                           <button key={subj} onClick={() => setSelectedManageSubject(subj)} className={`px-3 py-1 rounded-none text-xs font-bold border transition ${selectedManageSubject === subj ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}>
                               {subj}
                            </button>
                         ))}
                      </div>
                      <div className="space-y-1 max-h-[300px] overflow-y-auto">
                         {getManageLectures().length === 0 ? <p className="text-center text-slate-400 text-xs py-4">لا توجد محاضرات.</p> : getManageLectures().map(lecture => (
-                           <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-md hover:bg-slate-50 group">
+                           <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-none hover:bg-slate-50 group">
                               <div className="flex flex-col">
                                 <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>
                                 {lecture.title && <span className="text-[10px] text-blue-600">{lecture.title}</span>}
@@ -1177,9 +1177,9 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                  <button onClick={() => openEditModal(lecture)} className="p-1 text-slate-300 hover:text-blue-500"><Edit2 size={14}/></button>
                                  <div className="h-4 w-px bg-slate-200 mx-1"></div>
                                  <span className="text-[10px] text-slate-400 mr-2">{lecture.stage >= 5 ? 'Done' : `Stage ${lecture.stage}`}</span>
-                                 <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))} className="p-1 bg-gray-100 rounded hover:bg-gray-200"><Minus size={12}/></button>
+                                 <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))} className="p-1 bg-gray-100 rounded-none hover:bg-gray-200"><Minus size={12}/></button>
                                  <span className="w-4 text-center text-xs font-bold">{lecture.stage}</span>
-                                 <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.min(5, lecture.stage + 1))} className="p-1 bg-gray-100 rounded hover:bg-gray-200"><Plus size={12}/></button>
+                                 <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.min(5, lecture.stage + 1))} className="p-1 bg-gray-100 rounded-none hover:bg-gray-200"><Plus size={12}/></button>
                               </div>
                            </div>
                         ))}
@@ -1195,14 +1195,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                      </h3>
                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                         {history.length === 0 ? (
-                           <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-lg">
+                           <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-none">
                               لم تقم بأي جلسات بعد. ابدأ الآن! 🚀
                            </div>
                         ) : (
                            history.map((log) => (
-                              <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition">
+                              <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-none hover:border-blue-200 transition">
                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded flex items-center justify-center text-[10px] font-bold text-white ${SUBJECTS[log.subject]?.badge || 'bg-slate-400'}`}>
+                                    <div className={`w-8 h-8 rounded-none flex items-center justify-center text-[10px] font-bold text-white ${SUBJECTS[log.subject]?.badge || 'bg-slate-400'}`}>
                                        {log.subject}
                                     </div>
                                     <div>
@@ -1211,7 +1211,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                     </div>
                                  </div>
                                  <div className="text-right">
-                                    <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full inline-block mb-1">
+                                    <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-none inline-block mb-1">
                                        {log.stageCompleted === 0 ? 'مذاكرة أولى' : `مراجعة ${log.stageCompleted}`}
                                     </div>
                                     <div className="text-[10px] text-slate-400 flex items-center gap-1 justify-end">
@@ -1229,7 +1229,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                {settingsTab === 'danger' && (
                   <div className="space-y-2">
                      {Object.keys(SUBJECTS).map(subj => (
-                        <div key={subj} className="flex justify-between items-center p-3 border border-red-100 bg-red-50 rounded-md">
+                        <div key={subj} className="flex justify-between items-center p-3 border border-red-100 bg-red-50 rounded-none">
                            <span className="font-bold text-red-800 text-sm">{subj}</span>
                            <button onClick={() => resetSubjectProgress(subj)} className="text-red-600 text-xs font-bold hover:underline flex items-center gap-1"><Trash2 size={14}/> تصفير</button>
                         </div>
