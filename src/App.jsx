@@ -801,14 +801,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
       {/* --- NORMAL DASHBOARD UI --- */}
       
       {/* Top Nav & Stats Bar */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+      <nav className="bg-white border-b border-gray-200 px-4 py-2 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
         
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="bg-slate-900 text-white p-2 rounded-md">
-            <BrainCircuit size={20} />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="bg-slate-900 text-white p-1.5 rounded-md">
+            <BrainCircuit size={16} />
           </div>
           <div>
-             <h1 className="font-bold text-lg text-slate-800 leading-tight">MediTrack</h1>
+             <h1 className="font-bold text-base text-slate-800 leading-tight">MediTrack</h1>
           </div>
         </div>
 
@@ -818,15 +818,15 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
             {Object.keys(SUBJECTS).map(subj => {
               const stats = getSubjectStats(subj);
               return (
-                <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-lg p-1.5 min-w-[60px] shrink-0">
-                  <span className={`text-[10px] font-black px-2 rounded-sm mb-1 text-white ${SUBJECTS[subj].badge}`}>
+                <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-lg p-1 min-w-[50px] shrink-0">
+                  <span className={`text-[9px] font-black px-1.5 rounded-sm mb-0.5 text-white ${SUBJECTS[subj].badge}`}>
                     {subj}
                   </span>
                   <div className="flex items-end gap-0.5 leading-none">
-                    <span className="text-sm font-bold text-slate-800">{stats.new}</span>
-                    <span className="text-[9px] text-slate-400 font-medium">/{stats.total}</span>
+                    <span className="text-xs font-bold text-slate-800">{stats.new}</span>
+                    <span className="text-[8px] text-slate-400 font-medium">/{stats.total}</span>
                   </div>
-                  <span className="text-[8px] text-slate-400 mt-0.5">جديد</span>
+                  <span className="text-[7px] text-slate-400 mt-0.5">جديد</span>
                 </div>
               );
             })}
@@ -834,17 +834,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         </div>
         
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={16} className="text-amber-500" /> LifeTrack</button>
-          <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-3 py-1.5 rounded-md text-sm font-bold items-center gap-2 hover:bg-emerald-700 transition shadow-sm"><Calendar size={16} /> التقويم</button>
-          <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={20} /></button>
-          <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-2 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={20} /></button>
-          <div className="h-6 w-px bg-gray-300 mx-1"></div>
-          <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition" title="خروج"><LogOut size={20} /></button>
+          <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-2 py-1 rounded-md text-xs font-bold items-center gap-1.5 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={14} className="text-amber-500" /> LifeTrack</button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-2 py-1 rounded-md text-xs font-bold items-center gap-1.5 hover:bg-emerald-700 transition shadow-sm"><Calendar size={14} /> التقويم</button>
+          <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الدليل"><Info size={16} /></button>
+          <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-md transition" title="الإعدادات"><Settings size={16} /></button>
+          <div className="h-5 w-px bg-gray-300 mx-1"></div>
+          <button onClick={handleLogout} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition" title="خروج"><LogOut size={16} /></button>
         </div>
       </nav>
 
       {/* Main Grid: 3 Columns */}
-      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
+      <main className="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-80px)]">
         
         {/* COLUMN 1: DROP ZONE (Queue System) */}
         <div 
@@ -859,55 +859,55 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
            {/* Placeholder if empty */}
            {focusQueue.length === 0 ? (
-             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 z-10">
-                <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-                  <Layers size={32} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+             <div className="flex-1 flex flex-col items-center justify-center text-center p-4 z-10">
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                  <Layers size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
-                <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">منطقة التركيز</h3>
-                <p className="text-slate-500 font-medium mb-8 max-w-[200px] leading-relaxed mx-auto">
+                <h3 className="text-base font-black text-slate-800 mb-1.5 tracking-tight">منطقة التركيز</h3>
+                <p className="text-xs text-slate-500 font-medium mb-6 max-w-[180px] leading-relaxed mx-auto">
                   اسحب المحاضرات هنا لبدء جلسة عميقة
                 </p>
                 
                 <button 
                   onClick={startFreeFocus}
-                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover:translate-y-1 mx-auto"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-1.5 group-hover:translate-y-1 mx-auto"
                 >
-                  <Coffee size={16} />
+                  <Coffee size={14} />
                   جلسة حرة (بدون مواد)
                 </button>
              </div>
            ) : (
              <div className="flex flex-col h-full bg-slate-50/50">
                 {/* Header */}
-                <div className="p-4 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
+                <div className="p-3 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                   <div>
-                    <h3 className="text-lg font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1">تجهيز {focusQueue.length} محاضرات</p>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5">تجهيز {focusQueue.length} محاضرات</p>
                   </div>
                   <button 
                     onClick={startFocusSession}
-                    className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-2 transform active:scale-95"
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[10px] shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-1.5 transform active:scale-95"
                   >
-                    <Play size={14} fill="currentColor" />
+                    <Play size={12} fill="currentColor" />
                     ابدأ
                   </button>
                 </div>
                 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
                   {focusQueue.map((task, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
-                       <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
+                    <div key={idx} className="bg-white p-2 rounded-lg border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex justify-between items-center group/item">
+                       <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[task.subject]?.badge}`}>
                             {task.subject}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-800 text-sm block">Lec {task.number}</span>
-                            {task.title && <span className="text-[10px] font-medium text-slate-500">{task.title}</span>}
+                            <span className="font-bold text-slate-800 text-xs block">Lec {task.number}</span>
+                            {task.title && <span className="text-[9px] font-medium text-slate-500">{task.title}</span>}
                           </div>
                        </div>
-                       <button onClick={() => removeFromQueue(task.id)} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
-                         <X size={16} />
+                       <button onClick={() => removeFromQueue(task.id)} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                         <X size={14} />
                        </button>
                     </div>
                   ))}
@@ -918,21 +918,21 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
         {/* COLUMN 2: REVIEWS */}
         <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-amber-100/50 text-amber-600 rounded-lg">
-                  <BrainCircuit size={18} />
+            <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-1.5">
+                <div className="p-1 bg-amber-100/50 text-amber-600 rounded-lg">
+                  <BrainCircuit size={14} />
                 </div>
-                <span className="font-bold text-slate-700">المراجعات</span>
+                <span className="font-bold text-sm text-slate-700">المراجعات</span>
               </div>
-              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">{reviews.length}</span>
+              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{reviews.length}</span>
             </div>
             
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+            <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
               {reviews.length === 0 ? (
                  <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                   <CheckCircle size={40} className="mb-4 text-emerald-100" />
-                   <p className="font-medium text-sm">كل شيء تحت السيطرة!</p>
+                   <CheckCircle size={32} className="mb-3 text-emerald-100" />
+                   <p className="font-medium text-xs">كل شيء تحت السيطرة!</p>
                  </div>
               ) : (
                 reviews.map(r => (
@@ -940,17 +940,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                     key={r.id}
                     draggable={!isMobile}
                     onDragStart={(e) => !isMobile && handleDragStart(e, r)}
-                    className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex gap-3 flex-1">
-                         <div className={`mt-1 w-1.5 h-8 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
+                      <div className="flex gap-2 flex-1">
+                         <div className={`mt-0.5 w-1 h-6 rounded-full ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
                          <div className="flex-1">
-                           <div className="flex items-center gap-2 mb-1">
-                             <span className="font-black text-slate-700 text-sm">Lec {r.number}</span>
-                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
+                           <div className="flex items-center gap-1.5 mb-0.5">
+                             <span className="font-black text-slate-700 text-xs">Lec {r.number}</span>
+                             <span className={`text-[8px] font-bold px-1 py-0.5 rounded text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
                            </div>
-                           <div className="flex flex-wrap gap-2 text-[10px]">
+                           <div className="flex flex-wrap gap-1.5 text-[9px]">
                               {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
                               <span className="text-slate-300">•</span>
                               <span className="text-slate-500">تكرار {r.stage}</span>
@@ -958,18 +958,18 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                          </div>
                       </div>
                       
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         {isMobile && (
                           <button 
                             onClick={() => addToQueue(r)} 
-                            className="p-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                            className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
                             title="إضافة للقائمة"
                           >
-                            <Plus size={16} />
+                            <Plus size={14} />
                           </button>
                         )}
                         <button onClick={() => openEditModal(r)} className={`text-slate-300 hover:text-blue-500 p-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <Edit2 size={12} />
+                          <Edit2 size={10} />
                         </button>
                       </div>
                     </div>
@@ -981,21 +981,21 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
         {/* COLUMN 3: NEW */}
         <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-100/50 text-blue-600 rounded-lg">
-                  <BookOpen size={18} />
+            <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-1.5">
+                <div className="p-1 bg-blue-100/50 text-blue-600 rounded-lg">
+                  <BookOpen size={14} />
                 </div>
-                <span className="font-bold text-slate-700">الجديد</span>
+                <span className="font-bold text-sm text-slate-700">الجديد</span>
               </div>
-              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">{news.length}</span>
+              <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{news.length}</span>
             </div>
             
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+            <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
               {news.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                   <p className="font-medium text-sm">لا يوجد مواد جديدة حالياً.</p>
-                   <button onClick={() => {setShowSettings(true); setSettingsTab('config')}} className="mt-2 text-blue-500 text-xs font-bold hover:underline">ضبط الإعدادات</button>
+                   <p className="font-medium text-xs">لا يوجد مواد جديدة حالياً.</p>
+                   <button onClick={() => {setShowSettings(true); setSettingsTab('config')}} className="mt-1.5 text-blue-500 text-[10px] font-bold hover:underline">ضبط الإعدادات</button>
                 </div>
               ) : (
                 news.map(n => (
@@ -1003,30 +1003,30 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                     key={n.id}
                     draggable={!isMobile}
                     onDragStart={(e) => !isMobile && handleDragStart(e, n)}
-                    className={`bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`bg-white p-2 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
-                     <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
+                     <div className="flex items-center gap-2 flex-1">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
                           {n.subject}
                         </div>
                         <div className="flex-1">
-                           <span className="font-bold text-slate-700 text-sm block">Lecture {n.number}</span>
-                           {n.title && <span className="text-[10px] text-slate-500 block">{n.title}</span>}
+                           <span className="font-bold text-slate-700 text-xs block">Lecture {n.number}</span>
+                           {n.title && <span className="text-[9px] text-slate-500 block">{n.title}</span>}
                         </div>
                      </div>
                      
-                     <div className="flex items-center gap-1">
+                     <div className="flex items-center gap-0.5">
                        {isMobile && (
                          <button 
                            onClick={() => addToQueue(n)} 
-                           className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                           className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
                            title="إضافة للقائمة"
                          >
-                           <Plus size={16} />
+                           <Plus size={14} />
                          </button>
                        )}
-                       <button onClick={() => openEditModal(n)} className={`text-slate-300 hover:text-blue-500 p-2 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <Edit2 size={12} />
+                       <button onClick={() => openEditModal(n)} className={`text-slate-300 hover:text-blue-500 p-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <Edit2 size={10} />
                         </button>
                      </div>
                   </div>

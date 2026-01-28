@@ -1027,26 +1027,26 @@ const LifeTrack = ({ onBack, user, db }) => {
             </div>
         ) : null}
 
-        <div className="p-3">
-            {task.isRecurring && <div className="absolute top-2 left-2 text-amber-500 z-10" title="هدف مستمر"><Repeat size={12} /></div>}
-            <div className="flex items-start justify-between gap-2 mb-2">
-            <p className={`text-slate-200 font-medium leading-relaxed text-sm flex-1 flex items-center gap-1.5`}>
+        <div className="p-2">
+            {task.isRecurring && <div className="absolute top-1.5 left-1.5 text-amber-500 z-10" title="هدف مستمر"><Repeat size={10} /></div>}
+            <div className="flex items-start justify-between gap-1.5 mb-1.5">
+            <p className={`text-slate-200 font-medium leading-relaxed text-xs flex-1 flex items-center gap-1`}>
                 {task.isGroup && (
                 <button
                     onClick={(e) => { e.stopPropagation(); toggleGroupExpansion(task.id); }}
                     className="p-0.5 hover:bg-slate-800 rounded transition text-purple-400"
                 >
-                    {expandedGroups.has(task.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {expandedGroups.has(task.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
                 )}
-                {task.isGroup && <Layers size={14} className="text-purple-500 flex-shrink-0" />}
+                {task.isGroup && <Layers size={12} className="text-purple-500 flex-shrink-0" />}
                 <span className="line-clamp-2">{task.title}</span>
             </p>
             </div>
             
             {/* 📝 DESCRIPTION 📝 */}
             {task.description && !task.isGroup && (
-            <p className="text-slate-400 text-xs leading-relaxed mb-2 whitespace-pre-wrap line-clamp-2">
+            <p className="text-slate-400 text-[10px] leading-relaxed mb-1.5 whitespace-pre-wrap line-clamp-2">
               {renderTextWithLinks(task.description)}
             </p>
             )}
@@ -1104,23 +1104,23 @@ const LifeTrack = ({ onBack, user, db }) => {
                 </div>
             )}
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-800 mt-2">
-            <div className={`flex gap-1.5 transition-opacity ${isFocusMode || isMobile ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
-                <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={12}/></button>
-                <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={12}/></button>
+            <div className="flex items-center justify-between pt-1.5 border-t border-slate-800 mt-1.5">
+            <div className={`flex gap-1 transition-opacity ${isFocusMode || isMobile ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
+                <button onClick={() => setEditingTask({...task, originalTitle: task.title})} className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400"><Edit3 size={10}/></button>
+                <button onClick={() => confirm("حذف نهائي؟") && deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id))} className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400"><Trash2 size={10}/></button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
                 {task.playlistId && task.playlistLength > 0 && (
-                    <span className="text-[9px] text-slate-500 font-mono">
+                    <span className="text-[8px] text-slate-500 font-mono">
                     {task.watchedEpisodes?.length || 0}/{task.playlistLength}
                     </span>
                 )}
                 {task.isGroup && (
-                <span className="text-[9px] text-purple-400 font-mono bg-purple-950/30 px-1.5 py-0.5 rounded">
+                <span className="text-[8px] text-purple-400 font-mono bg-purple-950/30 px-1 py-0.5 rounded">
                     {task.subTasks?.length || 0}
                 </span>
                 )}
-                <button onClick={() => completeTask(task)} className="flex items-center gap-1 text-[9px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-2 py-0.5 rounded transition"><CheckCircle size={10} /> إنجاز</button>
+                <button onClick={() => completeTask(task)} className="flex items-center gap-0.5 text-[8px] font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white px-1.5 py-0.5 rounded transition"><CheckCircle size={9} /> إنجاز</button>
             </div>
             </div>
         </div>
@@ -1190,11 +1190,11 @@ const LifeTrack = ({ onBack, user, db }) => {
         </div>
       )}
 
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20 px-3 py-2 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-           <button onClick={onBack} className="bg-slate-800 p-2 rounded text-slate-400 hover:text-white">رجوع للموقع</button>
-           <div className="bg-amber-500/10 p-2 rounded-lg text-amber-500 border border-amber-500/20"><Target size={24} /></div>
-           <h1 className="font-bold text-xl tracking-wide">LifeTrack</h1>
+      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20 px-2 py-1.5 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+           <button onClick={onBack} className="bg-slate-800 p-1.5 rounded text-xs text-slate-400 hover:text-white">رجوع للموقع</button>
+           <div className="bg-amber-500/10 p-1.5 rounded-lg text-amber-500 border border-amber-500/20"><Target size={18} /></div>
+           <h1 className="font-bold text-base tracking-wide">LifeTrack</h1>
         </div>
         <div className="flex items-center gap-3">
            {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-full border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
@@ -1512,19 +1512,19 @@ const LifeTrack = ({ onBack, user, db }) => {
              )}
            </div>
            
-           <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
-           <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="تقويم الإنجازات"><Calendar size={16} /> التقويم</button>
-           <button onClick={() => setShowAddModal(true)} className="flex items-center justify-center w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="إضافة هدف جديد"><Plus size={24} /></button>
-           <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Settings size={20}/></button>
+           <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={14} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
+           <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20 text-xs font-bold" title="تقويم الإنجازات"><Calendar size={14} /> التقويم</button>
+           <button onClick={() => setShowAddModal(true)} className="flex items-center justify-center w-8 h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="إضافة هدف جديد"><Plus size={18} /></button>
+           <button onClick={() => setShowSettings(true)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Settings size={16}/></button>
         </div>
       </header>
       
-      <main className={`p-3 h-[calc(100vh-80px)] overflow-hidden flex gap-2 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+      <main className={`p-2 h-[calc(100vh-60px)] overflow-hidden flex gap-2 ${isMobile ? 'flex-col' : 'flex-row'}`}>
         
         {/* 🔥 SESSION BUILDER ZONE 🔥 - Hidden on mobile, shown as modal/bottom sheet */}
         {!isMobile && (
         <div 
-           className="w-80 flex-shrink-0 h-full flex flex-col rounded-none border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm session-zone"
+           className="w-64 flex-shrink-0 h-full flex flex-col rounded-none border-2 border-dashed border-slate-700 bg-slate-900/40 hover:border-amber-500/50 hover:bg-slate-900/60 transition-all backdrop-blur-sm session-zone"
            onDragEnter={e => {
              // Don't prevent default here, just add visual feedback
              e.currentTarget.classList.add('border-amber-500', 'bg-amber-950/20');
@@ -1542,26 +1542,26 @@ const LifeTrack = ({ onBack, user, db }) => {
            onDrop={handleQueueDrop}
         >
             {focusQueue.length === 0 ? (
-               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-6">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-slate-800 flex items-center justify-center mb-4 border border-amber-500/30">
-                    <Zap size={32} className="text-amber-500"/>
+               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-slate-800 flex items-center justify-center mb-3 border border-amber-500/30">
+                    <Zap size={24} className="text-amber-500"/>
                   </div>
-                  <h3 className="font-bold text-xl text-slate-200 mb-2">منطقة الجلسة</h3>
-                  <p className="text-sm text-center max-w-[240px] mb-6 text-slate-500 leading-relaxed">اسحب الأهداف هنا لبناء جلسة تركيز مخصصة</p>
+                  <h3 className="font-bold text-base text-slate-200 mb-1.5">منطقة الجلسة</h3>
+                  <p className="text-xs text-center max-w-[200px] mb-4 text-slate-500 leading-relaxed">اسحب الأهداف هنا لبناء جلسة تركيز مخصصة</p>
                   <button 
                     onClick={startFreeFocus} 
-                    className="flex items-center gap-2 px-5 py-2.5 border border-slate-600 rounded-full hover:bg-slate-800 hover:border-amber-500/50 text-sm font-bold transition text-slate-300 hover:text-amber-400"
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-600 rounded-full hover:bg-slate-800 hover:border-amber-500/50 text-xs font-bold transition text-slate-300 hover:text-amber-400"
                   >
-                    <Coffee size={16}/> جلسة حرة
+                    <Coffee size={14}/> جلسة حرة
                   </button>
                </div>
             ) : (
-               <div className="flex-1 flex flex-col h-full p-4">
-                  <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-800">
-                     <h3 className="font-bold text-amber-500 flex items-center gap-2 text-lg">
-                        <Zap size={18} className="text-amber-500"/> الجلسة الحالية
+               <div className="flex-1 flex flex-col h-full p-3">
+                  <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+                     <h3 className="font-bold text-amber-500 flex items-center gap-1.5 text-sm">
+                        <Zap size={14} className="text-amber-500"/> الجلسة الحالية
                      </h3>
-                     <span className="bg-amber-500/20 text-amber-500 text-xs px-2.5 py-1 rounded-full font-bold border border-amber-500/30">
+                     <span className="bg-amber-500/20 text-amber-500 text-[10px] px-2 py-0.5 rounded-full font-bold border border-amber-500/30">
                         {focusQueue.length}
                      </span>
                   </div>
@@ -1660,13 +1660,13 @@ const LifeTrack = ({ onBack, user, db }) => {
                   onDrop={e => !isMobile && handleDrop(e, col.id)} 
                   className={`flex-1 rounded-2xl border ${col.color} ${col.bg} backdrop-blur-sm flex flex-col overflow-hidden relative group ${isMobile ? 'min-h-[400px]' : ''}`}
                 >
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-                      <div className="flex items-center gap-1 font-bold text-slate-200"><col.icon size={18} className="opacity-70" />{col.title}</div>
-                      <span className="bg-white/10 text-xs px-2 py-1 rounded-full font-mono">
+                    <div className="p-2.5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                      <div className="flex items-center gap-1 font-bold text-sm text-slate-200"><col.icon size={14} className="opacity-70" />{col.title}</div>
+                      <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
                         {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).length}
                       </span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
                       {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).map(task => renderTaskCard(task, false, {
                         draggable: !isMobile,
                         onDragStart: e => !isMobile && handleDragStart(e, task),
