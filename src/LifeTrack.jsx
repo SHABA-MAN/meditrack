@@ -985,7 +985,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                         />
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
-                        <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+                        <div className="w-10 h-10 bg-red-600 text-white rounded-none flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
                             <Play size={16} fill="white" />
                         </div>
                     </div>
@@ -1018,7 +1018,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                         </div>
                      )}
                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
-                        <div className="w-10 h-10 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+                        <div className="w-10 h-10 bg-orange-600 text-white rounded-none flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
                             <Play size={16} fill="white" />
                         </div>
                      </div>
@@ -1096,7 +1096,7 @@ const LifeTrack = ({ onBack, user, db }) => {
             
             {/* 📊 PLAYLIST PROGRESS 📊 */}
             {task.playlistId && task.playlistLength > 0 && (
-                <div className="mb-3 bg-slate-800 rounded-full h-1.5 overflow-hidden flex w-full">
+                <div className="mb-3 bg-slate-800 rounded-none h-1.5 overflow-hidden flex w-full">
                 <div 
                     className="bg-emerald-500 h-full transition-all duration-500" 
                     style={{ width: `${(task.watchedEpisodes?.length || 0) / task.playlistLength * 100}%` }}
@@ -1134,7 +1134,7 @@ const LifeTrack = ({ onBack, user, db }) => {
         <Target size={64} className="text-amber-500 mb-6" />
         <h1 className="text-4xl font-bold mb-2">LifeTrack</h1>
         <p className="text-slate-500">Please log in from the main screen.</p>
-        <button onClick={onBack} className="px-8 py-3 bg-slate-800 rounded-lg text-white font-bold mt-4">Back to Dashboard</button>
+        <button onClick={onBack} className="px-8 py-3 bg-slate-800 rounded-none text-white font-bold mt-4">Back to Dashboard</button>
       </div>
   );
 
@@ -1149,14 +1149,14 @@ const LifeTrack = ({ onBack, user, db }) => {
           {/* Top Bar (Minimal) */}
           <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20 pointer-events-none">
              <div className="pointer-events-auto flex items-center gap-3">
-               <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-full bg-slate-900/50 backdrop-blur-md">
+               <span className="text-slate-400 font-mono text-sm uppercase tracking-widest border border-slate-800 px-3 py-1 rounded-none bg-slate-900/50 backdrop-blur-md">
                  {isFreeFocus ? 'Free Session' : `Active Tasks: ${focusQueue.length}`}
                </span>
 
                {/* SWITCHER BUTTON */}
                <button 
                  onClick={onBack}
-                 className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-full text-xs font-bold transition-all backdrop-blur-md"
+                 className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-none text-xs font-bold transition-all backdrop-blur-md"
                  title="العودة إلى MediTrack (ستبقى الجلسة محفوظة)"
                >
                  <BrainCircuit size={14} />
@@ -1166,7 +1166,7 @@ const LifeTrack = ({ onBack, user, db }) => {
              <div className="pointer-events-auto">
                 <button 
                   onClick={closeFocusMode} 
-                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-full"
+                  className="p-2 text-slate-500 hover:text-white transition hover:bg-slate-800 rounded-none"
                 >
                   <X size={24} />
                 </button>
@@ -1179,7 +1179,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                  <Zap size={64} className="text-amber-500 mb-8 opacity-90 animate-pulse" />
                  <h2 className="text-4xl font-light tracking-wide mb-4">جلسة تركيز حرة</h2>
                  <p className="text-slate-500 mb-12 max-w-md text-center leading-relaxed">استمتع بالهدوء. لا مهام، فقط إنجاز.</p>
-                 <button onClick={closeFocusMode} className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-full text-sm font-bold transition-all duration-300">إنهاء الجلسة</button>
+                 <button onClick={closeFocusMode} className="px-8 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 rounded-none text-sm font-bold transition-all duration-300">إنهاء الجلسة</button>
                </div>
              ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10 max-w-7xl mx-auto items-start">
@@ -1193,30 +1193,30 @@ const LifeTrack = ({ onBack, user, db }) => {
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20 px-2 py-1.5 flex justify-between items-center">
         <div className="flex items-center gap-2">
            <button onClick={onBack} className="bg-slate-800 p-1.5 rounded-none text-xs text-slate-400 hover:text-white">رجوع للموقع</button>
-           <div className="bg-amber-500/10 p-1.5 rounded-lg text-amber-500 border border-amber-500/20"><Target size={18} /></div>
+           <div className="bg-amber-500/10 p-1.5 rounded-none text-amber-500 border border-amber-500/20"><Target size={18} /></div>
            <h1 className="font-bold text-base tracking-wide">LifeTrack</h1>
         </div>
         <div className="flex items-center gap-3">
-           {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-full border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
+           {serverError && <div className="text-xs text-red-500 font-bold bg-red-950/30 px-3 py-1.5 rounded-none border border-red-900/50 animate-pulse"><ServerOff size={14} /> الخادم غير متصل</div>}
            
            {/* 🎬 YOUTUBE LIBRARY DROPDOWN (Start of YouTube/SoundCloud Library Code) 🎬 */}
            {/* This section handles the dropdown for accessing all media tasks (YouTube/SoundCloud) from any column */}
            <div className="relative youtube-dropdown-container">
              <button 
                onClick={() => setShowYouTubeDropdown(!showYouTubeDropdown)}
-               className="flex items-center justify-center w-10 h-10 rounded-lg text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 relative"
+               className="flex items-center justify-center w-10 h-10 rounded-none text-sm font-bold transition bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/30 relative"
                title="مكتبة اليوتيوب"
              >
                <Youtube size={20} />
                {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length > 0 && (
-                   <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] min-w-[16px] h-4 flex items-center justify-center rounded-full border border-slate-900 shadow-sm px-1">
+                   <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] min-w-[16px] h-4 flex items-center justify-center rounded-none border border-slate-900 shadow-sm px-1">
                      {tasks.filter(t => t.videoId || t.playlistId || t.soundCloudUrl).length}
                    </span>
                )}
              </button>
              
              {showYouTubeDropdown && (
-               <div className="absolute left-0 top-full mt-2 w-[420px] max-h-[600px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2">
+               <div className="absolute left-0 top-full mt-2 w-[420px] max-h-[600px] bg-slate-900 border border-slate-700 rounded-none shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2">
                  {/* Header */}
                  <div className="bg-gradient-to-r from-red-950/50 to-slate-900 p-4 border-b border-slate-800 flex items-center justify-between">
                    <div className="flex items-center gap-2">
@@ -1239,13 +1239,13 @@ const LifeTrack = ({ onBack, user, db }) => {
                          <div className={`p-3 ${col.bg} border-l-4 ${col.color} flex items-center gap-2`}>
                            <col.icon size={16} className="opacity-70" />
                            <span className="font-bold text-sm text-slate-200">{col.title}</span>
-                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full ml-auto">{ytTasks.length}</span>
+                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-none ml-auto">{ytTasks.length}</span>
                          </div>
                          <div className="p-2 space-y-2">
                            {ytTasks.map(task => (
                              <div 
                                key={task.id} 
-                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-lg overflow-hidden transition-all group cursor-pointer"
+                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-none overflow-hidden transition-all group cursor-pointer"
                              >
                                <div className="flex items-center gap-3 p-2">
                                   {/* Thumbnail */}
@@ -1375,13 +1375,13 @@ const LifeTrack = ({ onBack, user, db }) => {
                          <div className="p-3 bg-slate-900/50 border-l-4 border-slate-500 flex items-center gap-2">
                            <Inbox size={16} className="opacity-70" />
                            <span className="font-bold text-sm text-slate-200">وارد الرسائل</span>
-                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full ml-auto">{inboxYtTasks.length}</span>
+                           <span className="bg-white/10 text-xs px-2 py-0.5 rounded-none ml-auto">{inboxYtTasks.length}</span>
                          </div>
                          <div className="p-2 space-y-2">
                            {inboxYtTasks.map(task => (
                              <div 
                                key={task.id} 
-                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-lg overflow-hidden transition-all group cursor-pointer"
+                               className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-red-500/50 rounded-none overflow-hidden transition-all group cursor-pointer"
                              >
                                <div className="flex items-center gap-3 p-2">
                                  {/* Thumbnail */}
@@ -1512,10 +1512,10 @@ const LifeTrack = ({ onBack, user, db }) => {
              )}
            </div>
            
-           <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={14} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
-           <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20 text-xs font-bold" title="تقويم الإنجازات"><Calendar size={14} /> التقويم</button>
-           <button onClick={() => setShowAddModal(true)} className="flex items-center justify-center w-8 h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="إضافة هدف جديد"><Plus size={18} /></button>
-           <button onClick={() => setShowSettings(true)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Settings size={16}/></button>
+           <button onClick={syncTelegram} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition ${syncing ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><RefreshCw size={14} className={syncing ? "animate-spin" : ""} /> {syncing ? 'جاري المزامنة...' : 'سحب'}</button>
+           <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-none transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20 text-xs font-bold" title="تقويم الإنجازات"><Calendar size={14} /> التقويم</button>
+           <button onClick={() => setShowAddModal(true)} className="flex items-center justify-center w-8 h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-none transition border border-emerald-500/30 shadow-lg shadow-emerald-900/20" title="إضافة هدف جديد"><Plus size={18} /></button>
+           <button onClick={() => setShowSettings(true)} className="p-1.5 hover:bg-slate-800 rounded-none text-slate-400 hover:text-white"><Settings size={16}/></button>
         </div>
       </header>
       
@@ -1569,7 +1569,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                      <div className="grid grid-cols-3 gap-2">
                         {focusQueue.map(q => (
                           <div 
-                            key={q.id}                             className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
+                            key={q.id}                             className="bg-slate-800/80 p-2 rounded-none border border-slate-700 hover:border-amber-500/50 transition group/item relative aspect-square flex flex-col"
                            >
                               {q.soundCloudUrl ? (
                                  q.thumbnail ? <img src={q.thumbnail} className="w-full h-16 object-cover rounded-none mb-1.5" alt=""/> : <div className="w-full h-16 bg-orange-900/20 rounded-none mb-1.5 flex items-center justify-center"><Zap size={24} className="text-orange-500"/></div>
@@ -1601,14 +1601,14 @@ const LifeTrack = ({ onBack, user, db }) => {
                   <div className="flex gap-2">
                      <button 
                        onClick={startFocusSession} 
-                       className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30 transition text-sm"
+                       className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-none flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30 transition text-sm"
                      >
                         <Play size={16} fill="white"/> ابدأ التركيز
                      </button>
                      {focusQueue.length > 0 && (
                         <button 
                           onClick={() => setFocusQueue([])} 
-                          className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition"
+                          className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-none transition"
                           title="مسح الجلسة"
                         >
                            <X size={16}/>
@@ -1629,7 +1629,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                   <button
                     key={col.id}
                     onClick={() => setActiveTab(col.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-none text-sm font-bold transition whitespace-nowrap ${
                       activeTab === col.id 
                         ? `${col.bg} ${col.color} border ${col.color.replace('text-', 'border-')}` 
                         : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -1637,7 +1637,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                   >
                     <col.icon size={16} />
                     {col.title}
-                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full">
+                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-none">
                       {tasks.filter(t => t.stage === col.id && !t.videoId && !t.playlistId && !t.parentGroupId && !focusQueue.find(q => q.id === t.id)).length}
                     </span>
                   </button>
