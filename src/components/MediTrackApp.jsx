@@ -369,7 +369,8 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         if (!editingSubjectCode && subjects[code]) return alert("هذا الكود موجود بالفعل!");
 
         const theme = THEMES[newSubject.theme];
-        const newData = { ...subjects, [code]: { name: newSubject.name, theme: newSubject.theme, ...theme } };
+        // FIX: Spread theme first so it doesn't overwrite the name
+        const newData = { ...subjects, [code]: { ...theme, name: newSubject.name, theme: newSubject.theme } };
 
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
 
