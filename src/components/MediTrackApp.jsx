@@ -856,6 +856,21 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                                 {editingSubjectCode ? 'حفظ التعديلات' : 'إضافة المادة'}
                                             </button>
                                         </form>
+
+                                        <div className="mt-4 pt-4 border-t border-slate-200">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!user) return;
+                                                    if (!confirm('هل تريد إعادة تعيين أسماء المواد الافتراضية؟ (سيتم تحديث الأسماء فقط، لن يتم حذف أي بيانات)')) return;
+                                                    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), DEFAULT_SUBJECTS);
+                                                    alert('تم تحديث أسماء المواد بنجاح! ✅');
+                                                }}
+                                                className="w-full bg-amber-600 text-white py-2 rounded-none font-bold text-xs hover:bg-amber-700 transition flex items-center justify-center gap-2"
+                                            >
+                                                <AlertTriangle size={14} />
+                                                إعادة تعيين الأسماء الافتراضية
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
