@@ -28,11 +28,11 @@ const THEMES = {
 };
 
 const DEFAULT_SUBJECTS = {
-    TSF: { name: 'TSF', theme: 'indigo', ...THEMES.indigo },
-    CBG: { name: 'CBG', theme: 'emerald', ...THEMES.emerald },
-    BIO: { name: 'BIO', theme: 'rose', ...THEMES.rose },
-    ANA: { name: 'ANA', theme: 'blue', ...THEMES.blue },
-    PMD: { name: 'PMD', theme: 'amber', ...THEMES.amber }
+    TSF: { name: 'تشريح', theme: 'indigo', ...THEMES.indigo },
+    CBG: { name: 'كيمياء حيوية', theme: 'emerald', ...THEMES.emerald },
+    BIO: { name: 'أحياء', theme: 'rose', ...THEMES.rose },
+    ANA: { name: 'تشريح', theme: 'blue', ...THEMES.blue },
+    PMD: { name: 'طب مجتمع', theme: 'amber', ...THEMES.amber }
 };
 
 const INTERVALS = [1, 2, 4, 7];
@@ -790,12 +790,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                                             <p className="text-[10px] text-slate-400">Code: {code}</p>
                                                         </div>
                                                     </div>
-                                                    <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-none hover:bg-red-50 transition" title="حذف المادة">
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                    <button onClick={() => handleEditSubject(code)} className="text-blue-400 hover:text-blue-600 bg-white p-2 border rounded-none hover:bg-blue-50 transition ml-2" title="تعديل المادة">
-                                                        <Edit2 size={14} />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button onClick={() => handleEditSubject(code)} className="text-blue-400 hover:text-blue-600 bg-white p-2 border rounded-none hover:bg-blue-50 transition" title="تعديل المادة">
+                                                            <Edit2 size={14} />
+                                                        </button>
+                                                        <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-none hover:bg-red-50 transition" title="حذف المادة">
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
