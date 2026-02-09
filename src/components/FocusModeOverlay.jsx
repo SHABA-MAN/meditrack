@@ -13,8 +13,8 @@ const FocusModeOverlay = ({
     return (
         <div
             className={`fixed inset-0 z-50 flex flex-col transition-all duration-500 ease-in-out transform ${isFocusAnimating
-                    ? 'bg-slate-950 translate-x-0'
-                    : 'bg-slate-950 -translate-x-full'
+                ? 'bg-slate-950 translate-x-0'
+                : 'bg-slate-950 -translate-x-full'
                 }`}
         >
             {/* Top Bar (Minimal) */}
@@ -68,21 +68,21 @@ const FocusModeOverlay = ({
                             {focusQueue.map((task) => (
                                 <div
                                     key={task.id}
-                                    className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-8 rounded-none shadow-2xl w-full max-w-md flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
+                                    className="bg-slate-900/50 border border-slate-800 hover:border-slate-600 backdrop-blur-sm p-5 rounded-none shadow-2xl w-full max-w-xs flex flex-col items-center text-center relative group transition-all duration-300 hover:-translate-y-1"
                                 >
                                     {/* Subject Badge */}
-                                    <div className={`inline-block px-4 py-1.5 rounded-none text-xs font-bold mb-6 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
+                                    <div className={`inline-block px-3 py-1 rounded-none text-[10px] font-bold mb-4 text-white shadow-lg ${SUBJECTS[task.subject]?.darkBadge || 'bg-slate-700'}`}>
                                         {task.subject}
                                     </div>
 
                                     {/* Title & Number */}
-                                    <h2 className="text-5xl font-black text-white mb-2 tracking-tight">
+                                    <h2 className="text-3xl font-black text-white mb-1.5 tracking-tight">
                                         Lec {task.number}
                                     </h2>
-                                    {task.title && <p className="text-lg text-emerald-400 font-medium mb-1">{task.title}</p>}
+                                    {task.title && <p className="text-base text-emerald-400 font-medium mb-1">{task.title}</p>}
 
                                     {/* Meta Info */}
-                                    <div className="flex items-center justify-center gap-3 text-slate-500 text-xs mb-8 uppercase tracking-widest">
+                                    <div className="flex items-center justify-center gap-2 text-slate-500 text-[10px] mb-5 uppercase tracking-widest">
                                         <span>{task.stage === 0 ? 'New' : `Review ${task.stage}`}</span>
                                         {task.difficulty && (
                                             <span className={`flex items-center gap-1 ${task.difficulty === 'hard' ? 'text-red-400' : task.difficulty === 'easy' ? 'text-green-400' : ''}`}>
@@ -94,7 +94,7 @@ const FocusModeOverlay = ({
 
                                     {/* Description (Minimal) */}
                                     {task.description && (
-                                        <p className="text-slate-400 text-sm max-w-xs mx-auto mb-10 leading-relaxed font-light border-t border-slate-800 pt-4">
+                                        <p className="text-slate-400 text-xs max-w-xs mx-auto mb-6 leading-relaxed font-light border-t border-slate-800 pt-3">
                                             {task.description}
                                         </p>
                                     )}
@@ -102,12 +102,12 @@ const FocusModeOverlay = ({
                                     {/* Minimal Done Button */}
                                     <button
                                         onClick={() => completeTask(task)}
-                                        className="w-16 h-16 rounded-none bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
+                                        className="w-12 h-12 rounded-none bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
                                         title="إتمام"
                                     >
-                                        <CheckCircle size={32} />
+                                        <CheckCircle size={24} />
                                     </button>
-                                    <span className="text-[10px] text-slate-600 mt-3 font-medium uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark Done</span>
+                                    <span className="text-[9px] text-slate-600 mt-2 font-medium uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Mark Done</span>
                                 </div>
                             ))}
                         </div>

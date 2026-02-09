@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Scrollbar - Transparent & Minimal */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.2);
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.4);
+}
+
 /* Custom Scrollbar */
 /* Custom Scrollbar - Slim & Elegant */
 .custom-scrollbar::-webkit-scrollbar {
@@ -14,12 +38,14 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.4); /* Slate-600 with opacity */
+  background: rgba(71, 85, 105, 0.4);
+  /* Slate-600 with opacity */
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.6); /* Amber-500 on hover */
+  background: rgba(245, 158, 11, 0.6);
+  /* Amber-500 on hover */
 }
 
 /* Smooth animations */
@@ -28,6 +54,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
