@@ -8,7 +8,7 @@ const EditTaskModal = ({
     SUBJECTS
 }) => {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-none shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">

@@ -37,6 +37,12 @@ const DEFAULT_SUBJECTS = {
 
 const INTERVALS = [1, 2, 4, 7];
 
+const DIFFICULTY_CONFIG = {
+    easy: { label: 'سهلة', emoji: '🙂', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    normal: { label: 'عادية', emoji: '😐', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    hard: { label: 'صعبة', emoji: '🥵', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' }
+};
+
 const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState(null);
@@ -617,7 +623,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                             <div>
                                                 <span className="font-bold text-slate-800 text-xs block">Lec {task.number}</span>
                                                 <span className="text-[9px] text-blue-600 block font-bold">{SUBJECTS[task.subject]?.name}</span>
-                                                {task.title && <span className="text-[9px] font-medium text-slate-500">{task.title}</span>}
+                                                <div className="flex flex-wrap gap-1 items-center">
+                                                    {task.title && <span className="text-[9px] font-medium text-slate-500">{task.title}</span>}
+                                                    {task.difficulty && DIFFICULTY_CONFIG[task.difficulty] && (
+                                                        <>
+                                                            {task.title && <span className="text-slate-300 text-[9px]">•</span>}
+                                                            <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[task.difficulty].bg} ${DIFFICULTY_CONFIG[task.difficulty].text} ${DIFFICULTY_CONFIG[task.difficulty].border} border`}>
+                                                                {DIFFICULTY_CONFIG[task.difficulty].emoji}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <button onClick={() => removeFromQueue(task.id)} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-none transition-colors">
@@ -662,10 +678,18 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                                 <span className="font-black text-slate-700 text-xs">Lec {r.number}</span>
                                                 <span className={`text-[8px] font-bold px-1 py-0.5 rounded-none text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
                                                 <span className="text-[9px] text-slate-400 font-bold">{SUBJECTS[r.subject]?.name}</span>
-                                                <div className="flex flex-wrap gap-1.5 text-[9px]">
+                                                <div className="flex flex-wrap gap-1.5 text-[9px] items-center">
                                                     {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
                                                     <span className="text-slate-300">•</span>
                                                     <span className="text-slate-500">تكرار {r.stage}</span>
+                                                    {r.difficulty && DIFFICULTY_CONFIG[r.difficulty] && (
+                                                        <>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[r.difficulty].bg} ${DIFFICULTY_CONFIG[r.difficulty].text} ${DIFFICULTY_CONFIG[r.difficulty].border} border`}>
+                                                                {DIFFICULTY_CONFIG[r.difficulty].emoji} {DIFFICULTY_CONFIG[r.difficulty].label}
+                                                            </span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -723,7 +747,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                         <div className="flex-1">
                                             <span className="font-bold text-slate-700 text-xs block">Lecture {n.number}</span>
                                             <span className="text-[9px] text-blue-600 block font-bold mb-0.5">{SUBJECTS[n.subject]?.name}</span>
-                                            {n.title && <span className="text-[9px] text-slate-500 block">{n.title}</span>}
+                                            <div className="flex flex-wrap gap-1 items-center">
+                                                {n.title && <span className="text-[9px] text-slate-500">{n.title}</span>}
+                                                {n.difficulty && DIFFICULTY_CONFIG[n.difficulty] && (
+                                                    <>
+                                                        {n.title && <span className="text-slate-300 text-[9px]">•</span>}
+                                                        <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[n.difficulty].bg} ${DIFFICULTY_CONFIG[n.difficulty].text} ${DIFFICULTY_CONFIG[n.difficulty].border} border`}>
+                                                            {DIFFICULTY_CONFIG[n.difficulty].emoji} {DIFFICULTY_CONFIG[n.difficulty].label}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -907,7 +941,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                             <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-none hover:bg-slate-50 group">
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>
-                                                    {lecture.title && <span className="text-[10px] text-blue-600">{lecture.title}</span>}
+                                                    <div className="flex flex-wrap gap-1 items-center">
+                                                        {lecture.title && <span className="text-[10px] text-blue-600">{lecture.title}</span>}
+                                                        {lecture.difficulty && DIFFICULTY_CONFIG[lecture.difficulty] && (
+                                                            <>
+                                                                {lecture.title && <span className="text-slate-300 text-[9px]">•</span>}
+                                                                <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[lecture.difficulty].bg} ${DIFFICULTY_CONFIG[lecture.difficulty].text} ${DIFFICULTY_CONFIG[lecture.difficulty].border} border`}>
+                                                                    {DIFFICULTY_CONFIG[lecture.difficulty].emoji} {DIFFICULTY_CONFIG[lecture.difficulty].label}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => openEditModal(lecture)} className="p-1 text-slate-300 hover:text-blue-500"><Edit2 size={14} /></button>
