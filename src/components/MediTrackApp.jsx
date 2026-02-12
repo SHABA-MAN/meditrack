@@ -71,9 +71,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const handleLogout = async () => {
         if (confirm("هل تريد تسجيل الخروج؟")) {
             await signOut(auth);
-            setConfig(null);
-            setLectures({});
-            setHistory([]);
+            // Hooks automatically reset state when user becomes null
         }
     };
 
@@ -161,7 +159,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const saveSessionToCloud = async (isFree, queue) => {
         if (!user) return;
         try {
-            const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+            const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'meditrack');
             await setDoc(ref, {
                 type: 'meditrack',
                 startTime: new Date().toISOString(),
@@ -176,7 +174,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const deleteSessionFromCloud = async () => {
         if (!user) return;
         try {
-            const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+            const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'meditrack');
             await deleteDoc(ref);
         } catch (e) {
             console.error("Failed to delete session", e);
@@ -185,7 +183,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
     useEffect(() => {
         if (!user) return;
-        const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'current');
+        const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'active_session', 'meditrack');
         const unsubSession = onSnapshot(ref, (snap) => {
             if (snap.exists()) {
                 const data = snap.data();

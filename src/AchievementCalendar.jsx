@@ -19,7 +19,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
       setAchievements(data);
       setLoading(false);
     };
-    
+
     if (user && db) {
       fetchData();
     }
@@ -31,20 +31,20 @@ const AchievementCalendar = ({ user, db, onBack }) => {
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
+
     const days = [];
     const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
-    
+
     // إضافة أيام فارغة في البداية
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
-    
+
     // إضافة أيام الشهر
     for (let day = 1; day <= lastDay.getDate(); day++) {
       days.push(day);
     }
-    
+
     return days;
   };
 
@@ -65,9 +65,9 @@ const AchievementCalendar = ({ user, db, onBack }) => {
 
   const isToday = (day) => {
     const today = new Date();
-    return day === today.getDate() && 
-           currentMonth === today.getMonth() && 
-           currentYear === today.getFullYear();
+    return day === today.getDate() &&
+      currentMonth === today.getMonth() &&
+      currentYear === today.getFullYear();
   };
 
   const days = getDaysInMonth();
@@ -76,10 +76,10 @@ const AchievementCalendar = ({ user, db, onBack }) => {
   // عرض تفاصيل اليوم المحدد
   const renderDayDetails = () => {
     if (!selectedDate) return null;
-    
+
     const dateKey = getDateKey(selectedDate);
     const dayData = achievements[dateKey];
-    
+
     if (!dayData || !dayData.items || dayData.items.length === 0) {
       return (
         <div className="text-center py-8 text-slate-400">
@@ -164,7 +164,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
       <nav className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={onBack}
               className="p-2 hover:bg-gray-100 rounded-none transition"
             >
@@ -180,21 +180,21 @@ const AchievementCalendar = ({ user, db, onBack }) => {
 
       <div className="max-w-6xl mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* التقويم */}
           <div className="lg:col-span-2 bg-white rounded-none shadow-sm border border-slate-200 p-6">
             {/* التحكم في الشهر */}
             <div className="flex items-center justify-between mb-6">
-              <button 
+              <button
                 onClick={() => changeMonth(-1)}
                 className="p-2 hover:bg-slate-100 rounded-none transition"
               >
                 <ChevronRight size={20} className="text-slate-600" />
               </button>
-              
+
               <h2 className="text-xl font-bold text-slate-800">{monthName}</h2>
-              
-              <button 
+
+              <button
                 onClick={() => changeMonth(1)}
                 className="p-2 hover:bg-slate-100 rounded-none transition"
               >
@@ -223,7 +223,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
                   const hasAchievements = dayData && dayData.items && dayData.items.length > 0;
                   const today = isToday(day);
                   const selected = selectedDate === day;
-                  
+
                   return (
                     <button
                       key={idx}
@@ -239,7 +239,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
                       `}
                     >
                       <span className="relative z-10">{day}</span>
-                      
+
                       {/* مؤشر الإنجازات */}
                       {hasAchievements && !selected && (
                         <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
@@ -251,7 +251,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
                           )}
                         </div>
                       )}
-                      
+
                       {/* عدد الإنجازات */}
                       {hasAchievements && dayData.items.length > 3 && !selected && (
                         <div className="absolute top-1 left-1 bg-amber-500 text-white text-[9px] font-bold rounded-none w-4 h-4 flex items-center justify-center">
@@ -284,7 +284,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
                 {selectedDate ? `${selectedDate} ${currentDate.toLocaleDateString('ar-EG', { month: 'long' })}` : 'اختر يوماً'}
               </h3>
               {selectedDate && (
-                <button 
+                <button
                   onClick={() => setSelectedDate(null)}
                   className="text-slate-400 hover:text-slate-600"
                 >
@@ -292,7 +292,7 @@ const AchievementCalendar = ({ user, db, onBack }) => {
                 </button>
               )}
             </div>
-            
+
             {renderDayDetails()}
           </div>
         </div>

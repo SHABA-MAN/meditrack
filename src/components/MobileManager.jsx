@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, appId } from '../firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { THEMES, DEFAULT_DIFFICULTY, getDifficultyLabel } from '../constants';
+import { THEMES } from '../constants';
 import { useSubjects } from '../hooks/useSubjects';
 import { useLectures } from '../hooks/useLectures';
 import {

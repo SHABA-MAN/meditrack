@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { THEMES } from '../constants';
 
 /**
  * Custom hook for managing subjects
@@ -38,66 +39,39 @@ export const useSubjects = (db, appId, user) => {
         };
     }, [db, appId, user]);
 
-    /**
-     * Add or update a subject
-     */
-    const handleAddSubject = async (subjectData, editingCode = null) => {
-        if (!subjectData.code || !subjectData.name) {
-            throw new Error('يرجى ملء الكود والاسم');
+    const handleAddSubject = async (newSubject, editingCode = null) => {
+        if (!newSubject.code || !newSubject.name) throw new Error("يرجى إدخال الكود والاسم");
+
+        const code = newSubject.code.toUpperCase();
+
+        // Remove old subject if editing code changed (not supported by this simple logic yet, 
+        // usually editing code requires deleting old doc field and adding new one, 
+        // but here we are just updating the field in a single map)
+
+        if (editingCode && editingCode !== code) {
+            throw new Error("لا يمكن تعديل الكود حالياً، يرجى حذف المادة وإضافتها مجدداً");
         }
 
-        const code = subjectData.code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-        // Check for duplicates only if not editing
-        if (!editingCode && subjects[code]) {
-            throw new Error('هذا الكود موجود بالفعل!');
-        }
-
-        // Import THEMES from constants
-        const { THEMES } = await import('../constants');
-        const theme = THEMES[subjectData.theme];
-
-        const newData = {
-            ...subjects,
-            [code]: {
-                ...theme,
-                name: subjectData.name,
-                theme: subjectData.theme
-            }
+        const currentSubjects = { ...subjects };
+        currentSubjects[code] = {
+            name: newSubject.name,
+            theme: newSubject.theme,
+            badge: THEMES[newSubject.theme].badge
         };
 
-        await setDoc(
-            doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'),
-            newData
-        );
-
-        // Initialize config if new subject
-        if (!editingCode && (!config || config[code] === undefined)) {
-            await setDoc(
-                doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'),
-                { ...config, [code]: 0 },
-                { merge: true }
-            );
+        if (editingCode && editingCode !== code) {
+            delete currentSubjects[editingCode];
         }
 
-        return code;
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), currentSubjects);
     };
 
-    /**
-     * Delete a subject
-     */
     const deleteSubject = async (code) => {
-        const newData = { ...subjects };
-        delete newData[code];
-        await setDoc(
-            doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'),
-            newData
-        );
+        const newSubjects = { ...subjects };
+        delete newSubjects[code];
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newSubjects);
     };
 
-    /**
-     * Get subject statistics
-     */
     const getSubjectStats = (subjectCode, lectures = {}) => {
         const total = parseInt(config?.[subjectCode] || 0);
         let started = 0;
@@ -112,12 +86,5 @@ export const useSubjects = (db, appId, user) => {
         return { total, new: newCount };
     };
 
-    return {
-        subjects,
-        config,
-        loading,
-        handleAddSubject,
-        deleteSubject,
-        getSubjectStats
-    };
+    return { subjects, config, handleAddSubject, deleteSubject, getSubjectStats };
 };

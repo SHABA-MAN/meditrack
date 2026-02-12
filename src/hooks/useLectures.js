@@ -72,40 +72,19 @@ export const useLectures = (db, appId, user) => {
     /**
      * Get lectures for a specific subject
      */
-    const getSubjectLectures = (subjectCode, config) => {
-        if (!config || !subjectCode) return [];
-
-        const total = parseInt(config[subjectCode]) || 0;
-        const list = [];
-
-        for (let i = 1; i <= total; i++) {
-            const id = `${subjectCode}_${i}`;
-            const lecture = lectures[id];
-
-            list.push({
-                id,
-                subject: subjectCode,
-                number: i,
-                stage: lecture ? lecture.stage : 0,
-                nextReview: lecture ? lecture.nextReview : null,
-                title: lecture?.title,
-                description: lecture?.description,
-                difficulty: lecture?.difficulty,
-                isCompleted: lecture?.isCompleted
-            });
-        }
-
-        return list;
-    };
-
     /**
-     * Get lectures that need review today
+     * Get lectures that need review today or overdue
      */
     const getReviewLectures = () => {
+        if (!lectures) return [];
         const today = new Date().toISOString().split('T')[0];
-        return Object.values(lectures).filter(
-            lecture => lecture.nextReview && lecture.nextReview <= today && !lecture.isCompleted
-        );
+
+        return Object.values(lectures).filter(lecture => {
+            if (!lecture.nextReview || lecture.isCompleted) return false;
+            // Extract date part only ensuring we compare YYYY-MM-DD to YYYY-MM-DD
+            const reviewDate = lecture.nextReview.split('T')[0];
+            return reviewDate <= today;
+        });
     };
 
     /**
@@ -117,26 +96,59 @@ export const useLectures = (db, appId, user) => {
         const newLectures = [];
         Object.keys(config).forEach(subject => {
             const total = parseInt(config[subject]) || 0;
+            // Loop until we find the first unstudied lecture
             for (let i = 1; i <= total; i++) {
                 const id = `${subject}_${i}`;
-                if (!lectures[id] || lectures[id].stage === 0) {
-                    const existing = lectures[id] || {};
+                const lecture = lectures[id];
+
+                // If lecture doesn't exist in DB, or has stage 0, it's new
+                if (!lecture || lecture.stage === 0) {
                     newLectures.push({
                         id,
                         subject,
                         number: i,
                         stage: 0,
-                        title: existing.title || '',
-                        description: existing.description || '',
-                        difficulty: existing.difficulty || 'normal'
+                        title: lecture?.title || '',
+                        description: lecture?.description || '',
+                        difficulty: lecture?.difficulty || 'normal'
                     });
-                    break; // Only get first unstudied lecture per subject
+                    break; // Found the next new lecture for this subject
                 }
             }
         });
 
         return newLectures;
     };
+
+    /**
+     * Get all lectures for a specific subject
+     */
+    const getSubjectLectures = (subjectCode, config) => {
+        if (!config || !subjectCode) return [];
+
+        const total = parseInt(config[subjectCode]) || 0;
+        const list = [];
+
+        for (let i = 1; i <= total; i++) {
+            const id = `${subjectCode}_${i}`;
+            const lecture = lectures[id] || {}; // Handle missing lectures gracefully
+
+            list.push({
+                id,
+                subject: subjectCode,
+                number: i,
+                stage: lecture.stage !== undefined ? lecture.stage : 0,
+                nextReview: lecture.nextReview || null,
+                title: lecture.title || '',
+                description: lecture.description || '',
+                difficulty: lecture.difficulty || 'normal',
+                isCompleted: lecture.isCompleted || false
+            });
+        }
+
+        return list;
+    };
+
 
     return {
         lectures,

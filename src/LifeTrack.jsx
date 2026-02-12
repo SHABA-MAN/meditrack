@@ -185,7 +185,7 @@ const LifeTrack = ({ onBack, user, db }) => {
           let thumbnail = null;
 
           if (task.playlistId) {
-            const res = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+            const res = await fetch(`${API_BASE_URL}/api/youtube/playlistInfo`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ playlistId: task.playlistId, apiKey: config.youtubeApiKey })
@@ -195,7 +195,7 @@ const LifeTrack = ({ onBack, user, db }) => {
               thumbnail = data.thumbnail;
             }
           } else if (task.videoId) {
-            const res = await fetch('http://localhost:3001/api/youtube/videoInfo', {
+            const res = await fetch(`${API_BASE_URL}/api/youtube/videoInfo`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ videoId: task.videoId, apiKey: config.youtubeApiKey })
@@ -228,7 +228,7 @@ const LifeTrack = ({ onBack, user, db }) => {
       const scTasks = tasks.filter(t => t.soundCloudUrl && !t.thumbnail);
       for (const task of scTasks) {
         try {
-          const res = await fetch('http://localhost:3001/api/soundcloud/resolve', {
+          const res = await fetch(`${API_BASE_URL}/api/soundcloud/resolve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: task.soundCloudUrl })
@@ -249,6 +249,8 @@ const LifeTrack = ({ onBack, user, db }) => {
     };
     fetchSCThumbnails();
   }, [tasks, user]);
+
+
 
   // --- Logic ---
 
