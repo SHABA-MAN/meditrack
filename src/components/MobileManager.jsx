@@ -13,7 +13,7 @@ const MobileManager = ({ user, onBack }) => {
     const [activeTab, setActiveTab] = useState('subjects');
 
     // Use custom hooks
-    const { subjects, config, handleAddSubject: addSubjectCore, deleteSubject: removeSubjectCore } = useSubjects(db, appId, user);
+    const { subjects, config, handleAddSubject: addSubjectCore, deleteSubject: removeSubjectCore, getSubjectStats } = useSubjects(db, appId, user);
     const { lectures, saveLecture, deleteLecture: removeLectureCore, getSubjectLectures } = useLectures(db, appId, user);
 
     const [selectedSubject, setSelectedSubject] = useState(null);
