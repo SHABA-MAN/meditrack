@@ -13,16 +13,24 @@ const App = () => {
   const [currentView, setCurrentView] = useState('meditrack');
 
   useEffect(() => {
-    // Check for "Manage" route
-    if (window.location.pathname === '/manage') {
-      setCurrentView('mobile-manager');
-    }
+    // Check for "Manage" route using hash
+    const checkRoute = () => {
+      if (window.location.hash === '#/manage') {
+        setCurrentView('mobile-manager');
+      }
+    };
+
+    checkRoute();
+    window.addEventListener('hashchange', checkRoute);
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener('hashchange', checkRoute);
+    };
   }, []);
 
   // Listen for calendar switch event
@@ -38,7 +46,7 @@ const App = () => {
   if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-slate-600 font-bold">جاري تحميل النظام...</div>;
 
   if (currentView === 'mobile-manager') {
-    return <MobileManager user={user} onBack={() => { window.history.pushState({}, '', '/'); setCurrentView('meditrack'); }} />;
+    return <MobileManager user={user} onBack={() => { window.location.hash = ''; setCurrentView('meditrack'); }} />;
   }
 
   if (currentView === 'lifetrack') {

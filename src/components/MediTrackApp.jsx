@@ -830,7 +830,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                         </ol>
 
                                         <a
-                                            href="/manage"
+                                            href="#/manage"
                                             className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-none transition shadow-md"
                                         >
                                             فتح صفحة المدير الآن
