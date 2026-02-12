@@ -197,24 +197,29 @@ const MobileManager = ({ user, onBack }) => {
                     return (
                         <div
                             key={code}
-                            onClick={() => setSelectedSubject(code)}
-                            className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 active:scale-95 transition-all duration-200 relative group overflow-hidden"
+                            className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden"
                         >
-                            <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${data.badge ? data.badge.replace('bg-', 'from-') : 'from-blue-500'} to-transparent opacity-10 rounded-bl-full -mr-4 -mt-4`}></div>
+                            <div
+                                onClick={() => setSelectedSubject(code)}
+                                className="cursor-pointer active:scale-95 transition-transform"
+                            >
+                                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${data.badge ? data.badge.replace('bg-', 'from-') : 'from-blue-500'} to-transparent opacity-10 rounded-bl-full -mr-4 -mt-4 pointer-events-none`}></div>
 
-                            <div className={`w-12 h-12 rounded-2xl mb-4 flex items-center justify-center text-white font-black text-xl shadow-md ${data.badge || 'bg-slate-500'}`}>
-                                {code.substring(0, 1)}
+                                <div className={`w-12 h-12 rounded-2xl mb-3 flex items-center justify-center text-white font-black text-xl shadow-md ${data.badge || 'bg-slate-500'}`}>
+                                    {code.substring(0, 1)}
+                                </div>
+                                <h3 className="font-bold text-slate-800 text-base leading-tight mb-1 pr-8">{data.name}</h3>
+                                <div className="flex items-end gap-1 leading-none mb-1">
+                                    <span className="text-sm font-bold text-slate-800">{stats.new}</span>
+                                    <span className="text-xs text-slate-400 font-medium">/{stats.total}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400">جديد</p>
                             </div>
-                            <h3 className="font-bold text-slate-800 text-lg leading-tight mb-1">{data.name}</h3>
-                            <div className="flex items-end gap-1 leading-none mb-1">
-                                <span className="text-sm font-bold text-slate-800">{stats.new}</span>
-                                <span className="text-xs text-slate-400 font-medium">/{stats.total}</span>
-                            </div>
-                            <p className="text-[10px] text-slate-400">جديد</p>
 
+                            {/* Always visible edit button on mobile */}
                             <button
                                 onClick={(e) => { e.stopPropagation(); openEditSubject(code); }}
-                                className="absolute top-3 left-3 text-slate-300 hover:text-slate-600 p-1 bg-white/50 backdrop-blur rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-2 left-2 text-slate-400 hover:text-blue-600 active:text-blue-700 p-2 bg-white rounded-full shadow-sm border border-slate-100 transition-colors z-10"
                             >
                                 <Edit2 size={14} />
                             </button>
@@ -327,7 +332,7 @@ const MobileManager = ({ user, onBack }) => {
                 </div>
             )}
 
-            {/* Modals */}
+            {/* Subject Modal */}
             {showAddModal && modalType === 'subject' && (
                 <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
                     <div onClick={e => e.stopPropagation()} className="bg-white w-full sm:max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -348,9 +353,10 @@ const MobileManager = ({ user, onBack }) => {
                                     value={newSubject.code || ''}
                                     disabled={!!editingSubjectCode}
                                     onChange={e => setNewSubject({ ...newSubject, code: e.target.value })}
-                                    className="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 text-left font-mono font-bold text-lg outline-none"
+                                    className="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 text-left font-mono font-bold text-lg outline-none disabled:bg-slate-200 disabled:text-slate-500"
                                     placeholder="e.g. ANA"
                                 />
+                                {editingSubjectCode && <p className="text-[10px] text-orange-400 font-medium mt-1">لا يمكن تغيير الكود</p>}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 mb-2">اسم المادة</label>
@@ -394,6 +400,7 @@ const MobileManager = ({ user, onBack }) => {
                 </div>
             )}
 
+            {/* Lecture Modal */}
             {showAddModal && modalType === 'lecture' && editingTask && (
                 <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
                     <div onClick={e => e.stopPropagation()} className="bg-white w-full sm:max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
