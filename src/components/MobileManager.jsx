@@ -7,16 +7,32 @@ import {
     LayoutGrid, BookOpen
 } from 'lucide-react';
 
+// Import THEMES from main app
+const THEMES = {
+    indigo: { name: 'نيلي', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
+    emerald: { name: 'زمردي', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
+    rose: { name: 'وردي', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
+    blue: { name: 'أزرق', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
+    amber: { name: 'كهرماني', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' },
+    purple: { name: 'بنفسجي', color: 'bg-purple-100 text-purple-800 border-purple-200', badge: 'bg-purple-600', darkBadge: 'bg-purple-500' },
+    cyan: { name: 'سماوي', color: 'bg-cyan-100 text-cyan-800 border-cyan-200', badge: 'bg-cyan-600', darkBadge: 'bg-cyan-500' },
+    pink: { name: 'زهري', color: 'bg-pink-100 text-pink-800 border-pink-200', badge: 'bg-pink-600', darkBadge: 'bg-pink-500' },
+    slate: { name: 'رمادي', color: 'bg-slate-100 text-slate-800 border-slate-200', badge: 'bg-slate-600', darkBadge: 'bg-slate-500' },
+    orange: { name: 'برتقالي', color: 'bg-orange-100 text-orange-800 border-orange-200', badge: 'bg-orange-600', darkBadge: 'bg-orange-500' },
+    teal: { name: 'فيروزي', color: 'bg-teal-100 text-teal-800 border-teal-200', badge: 'bg-teal-600', darkBadge: 'bg-teal-500' },
+};
+
 const MobileManager = ({ user, onBack }) => {
-    const [activeTab, setActiveTab] = useState('subjects'); // subjects, search, settings
+    const [activeTab, setActiveTab] = useState('subjects');
     const [subjects, setSubjects] = useState({});
     const [lectures, setLectures] = useState({});
+    const [config, setConfig] = useState(null);
     const [selectedSubject, setSelectedSubject] = useState(null);
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState(false);
-    const [editingItem, setEditingItem] = useState(null); // If set, we are editing this item
-    const [modalType, setModalType] = useState('lecture'); // 'subject' or 'lecture'
+    const [editingItem, setEditingItem] = useState(null);
+    const [modalType, setModalType] = useState('lecture');
 
     // Input States
     const [formData, setFormData] = useState({});
@@ -24,37 +40,51 @@ const MobileManager = ({ user, onBack }) => {
     useEffect(() => {
         if (!user) return;
 
+        // Load subject definitions
         const unsubSubjects = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), (snap) => {
             if (snap.exists()) setSubjects(snap.data());
         });
 
+        // Load config (lecture counts)
+        const unsubConfig = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), (snap) => {
+            if (snap.exists()) setConfig(snap.data());
+        });
+
+        // Load lectures
         const unsubLectures = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'lectures'), (snap) => {
             const data = {};
             snap.forEach(d => data[d.id] = d.data());
             setLectures(data);
         });
 
-        return () => { unsubSubjects(); unsubLectures(); };
+        return () => { unsubSubjects(); unsubConfig(); unsubLectures(); };
     }, [user]);
 
     // Actions
     const handleSave = async () => {
+        if (!user) return;
+
         if (modalType === 'subject') {
-            const code = formData.code?.toUpperCase();
-            if (!code || !formData.name) return alert('Please fill all fields');
+            const code = formData.code?.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (!code || !formData.name) return alert('يرجى ملء الكود والاسم');
 
-            const newSubjects = {
-                ...subjects, [code]: {
-                    name: formData.name,
-                    theme: formData.theme || 'blue',
-                    badge: `bg-${formData.theme || 'blue'}-600`
-                }
-            };
+            // Check for duplicates
+            if (!editingItem && subjects[code]) return alert('هذا الكود موجود بالفعل!');
 
-            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newSubjects, { merge: true });
+            const theme = THEMES[formData.theme || 'blue'];
+            const newData = { ...subjects, [code]: { ...theme, name: formData.name, theme: formData.theme || 'blue' } };
+
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
+
+            // Initialize config if new subject
+            if (!editingItem && (!config || config[code] === undefined)) {
+                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [code]: 0 }, { merge: true });
+            }
+
+            alert(editingItem ? 'تم تعديل المادة بنجاح ✅' : 'تم إضافة المادة بنجاح ✅');
         } else {
-            // Save Lecture
-            if (!formData.subject || !formData.number) return alert('Subject and Number are required');
+            // Save Lecture - EXACTLY like main app
+            if (!formData.subject || !formData.number) return alert('المادة والرقم مطلوبان');
 
             const id = editingItem?.id || `${formData.subject}_${formData.number}`;
             const data = {
@@ -64,12 +94,14 @@ const MobileManager = ({ user, onBack }) => {
                 title: formData.title || '',
                 description: formData.description || '',
                 difficulty: formData.difficulty || 'normal',
-                stage: editingItem?.stage || 0,
+                stage: editingItem?.stage !== undefined ? editingItem.stage : 0,
                 nextReview: editingItem?.nextReview || null,
-                isCompleted: editingItem?.isCompleted || false
+                isCompleted: editingItem?.isCompleted || false,
+                lastStudied: editingItem?.lastStudied || null
             };
 
             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', id), data, { merge: true });
+            alert(editingItem ? 'تم تعديل المحاضرة ✅' : 'تم إضافة المحاضرة ✅');
         }
 
         setShowAddModal(false);
@@ -78,41 +110,33 @@ const MobileManager = ({ user, onBack }) => {
     };
 
     const handleDelete = async (item, type) => {
-        if (!confirm('Are you sure you want to delete this?')) return;
+        if (!confirm('هل أنت متأكد من الحذف؟')) return;
 
         if (type === 'lecture') {
             await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', item.id));
+            alert('تم حذف المحاضرة ✅');
         } else {
-            // Delete Subject Logic
-            // 1. Delete all lectures of this subject
-            const batch = writeBatch(db);
-            Object.values(lectures).forEach(l => {
-                if (l.subject === item.code) {
-                    batch.delete(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', l.id));
-                }
-            });
+            if (!confirm(`هل أنت متأكد من حذف مادة ${item.code}؟ لن يتم حذف المحاضرات القديمة ولكن لن تظهر المادة.`)) return;
 
-            // 2. Remove from definitions
-            const newSubjects = { ...subjects };
-            delete newSubjects[item.code];
-            batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newSubjects);
-
-            await batch.commit();
+            const newData = { ...subjects };
+            delete newData[item.code];
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
             setSelectedSubject(null);
+            alert('تم حذف المادة ✅');
         }
         setShowAddModal(false);
     };
 
     const openAddLecture = (subjCode = null) => {
         setModalType('lecture');
-        setFormData({ subject: subjCode || Object.keys(subjects)[0], number: '', difficulty: 'normal' });
+        setFormData({ subject: subjCode || Object.keys(subjects)[0], number: '', difficulty: 'normal', title: '', description: '' });
         setEditingItem(null);
         setShowAddModal(true);
     };
 
     const openEditLecture = (lecture) => {
         setModalType('lecture');
-        setFormData(lecture);
+        setFormData({ ...lecture });
         setEditingItem(lecture);
         setShowAddModal(true);
     };
@@ -120,9 +144,9 @@ const MobileManager = ({ user, onBack }) => {
     const openEditSubject = (code) => {
         setModalType('subject');
         setFormData({ code, ...subjects[code] });
-        setEditingItem({ id: code, code }); // Hack for delete logic
+        setEditingItem({ id: code, code });
         setShowAddModal(true);
-    }
+    };
 
     // Views
     const SubjectsView = () => (
@@ -130,7 +154,7 @@ const MobileManager = ({ user, onBack }) => {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight">المواد الدراسية</h2>
                 <button
-                    onClick={() => { setModalType('subject'); setFormData({}); setShowAddModal(true); }}
+                    onClick={() => { setModalType('subject'); setFormData({ theme: 'blue' }); setEditingItem(null); setShowAddModal(true); }}
                     className="bg-slate-900 text-white p-3 rounded-full shadow-lg shadow-slate-200 active:scale-90 transition-transform"
                 >
                     <Plus size={20} />
@@ -140,6 +164,7 @@ const MobileManager = ({ user, onBack }) => {
             <div className="grid grid-cols-2 gap-4">
                 {Object.entries(subjects).map(([code, data]) => {
                     const count = Object.values(lectures).filter(l => l.subject === code).length;
+                    const total = config?.[code] || 0;
                     return (
                         <div
                             key={code}
@@ -152,7 +177,7 @@ const MobileManager = ({ user, onBack }) => {
                                 {code.substring(0, 1)}
                             </div>
                             <h3 className="font-bold text-slate-800 text-lg leading-tight mb-1">{data.name}</h3>
-                            <p className="text-xs text-slate-400 font-bold">{count} محاضرة</p>
+                            <p className="text-xs text-slate-400 font-bold">{count} محاضرة {total > 0 && `من ${total}`}</p>
 
                             <button
                                 onClick={(e) => { e.stopPropagation(); openEditSubject(code); }}
@@ -199,6 +224,7 @@ const MobileManager = ({ user, onBack }) => {
                         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                             <BookOpen size={48} className="mb-4 opacity-20" />
                             <p className="font-bold text-sm">لا توجد محاضرات بعد</p>
+                            <p className="text-xs mt-2">اضغط + لإضافة محاضرة جديدة</p>
                         </div>
                     ) : list.map(l => (
                         <div key={l.id} onClick={() => openEditLecture(l)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center active:scale-[0.98] transition-all">
@@ -206,13 +232,18 @@ const MobileManager = ({ user, onBack }) => {
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-black text-slate-800 text-base">Lec {l.number}</span>
                                     {l.isCompleted && <Check size={14} className="text-green-500 stroke-[3]" />}
+                                    {l.stage > 0 && !l.isCompleted && (
+                                        <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded-md font-bold">
+                                            تكرار {l.stage}
+                                        </span>
+                                    )}
                                 </div>
                                 {l.title && <p className="text-slate-500 text-xs font-medium mb-1.5">{l.title}</p>}
 
                                 <div className="flex gap-1.5">
                                     <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${l.difficulty === 'easy' ? 'bg-green-50 text-green-600' :
-                                            l.difficulty === 'hard' ? 'bg-red-50 text-red-600' :
-                                                'bg-blue-50 text-blue-600'
+                                        l.difficulty === 'hard' ? 'bg-red-50 text-red-600' :
+                                            'bg-blue-50 text-blue-600'
                                         }`}>
                                         {l.difficulty === 'easy' ? 'سهلة' : l.difficulty === 'hard' ? 'صعبة' : 'عادية'}
                                     </span>
@@ -227,6 +258,19 @@ const MobileManager = ({ user, onBack }) => {
             </div>
         );
     };
+
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <div className="text-center">
+                    <p className="text-slate-600 font-bold">يرجى تسجيل الدخول أولاً</p>
+                    <button onClick={onBack} className="mt-4 px-6 py-2 bg-slate-900 text-white rounded-xl font-bold">
+                        العودة للموقع
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" dir="rtl">
@@ -276,7 +320,7 @@ const MobileManager = ({ user, onBack }) => {
                                         <input
                                             type="text"
                                             value={formData.code || ''}
-                                            disabled={!!editingItem} // Cannot change code of existing subject due to data structure
+                                            disabled={!!editingItem}
                                             onChange={e => setFormData({ ...formData, code: e.target.value })}
                                             className="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 text-left font-mono font-bold text-lg outline-none transition-all placeholder:text-slate-300"
                                             placeholder="e.g. ANA"
@@ -295,16 +339,16 @@ const MobileManager = ({ user, onBack }) => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">لون المادة</label>
-                                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                            {['blue', 'indigo', 'emerald', 'rose', 'amber', 'purple', 'cyan', 'orange'].map(color => (
+                                        <div className="grid grid-cols-4 gap-3">
+                                            {Object.keys(THEMES).map(color => (
                                                 <button
                                                     key={color}
+                                                    type="button"
                                                     onClick={() => setFormData({ ...formData, theme: color })}
-                                                    className={`w-10 h-10 rounded-full shrink-0 border-2 transition-all ${formData.theme === color ? `border-${color}-500 scale-110 shadow-md` : 'border-transparent opacity-50'
+                                                    className={`h-12 rounded-xl transition-all ${THEMES[color].badge} ${formData.theme === color ? 'ring-4 ring-offset-2 ring-blue-400 scale-105' : 'opacity-50'
                                                         }`}
-                                                    style={{ backgroundColor: `var(--color-${color}-500)` }} // Fallback or use Tailwind classes safely
                                                 >
-                                                    <div className={`w-full h-full rounded-full bg-${color}-500`}></div>
+                                                    <span className="text-white text-xs font-bold">{THEMES[color].name}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -338,7 +382,7 @@ const MobileManager = ({ user, onBack }) => {
                                                 value={formData.number || ''}
                                                 onChange={e => setFormData({ ...formData, number: e.target.value })}
                                                 className="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 font-bold text-center text-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                                disabled={!!editingItem} // Lock ID editing
+                                                disabled={!!editingItem}
                                             />
                                         </div>
                                     </div>
@@ -353,15 +397,25 @@ const MobileManager = ({ user, onBack }) => {
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">وصف المحاضرة</label>
+                                        <textarea
+                                            value={formData.description || ''}
+                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                            className="w-full p-4 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-medium placeholder:text-slate-300 min-h-[80px]"
+                                            placeholder="وصف اختياري"
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">الصعوبة</label>
                                         <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1">
                                             {['easy', 'normal', 'hard'].map(level => (
                                                 <button
                                                     key={level}
+                                                    type="button"
                                                     onClick={() => setFormData({ ...formData, difficulty: level })}
                                                     className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all shadow-sm ${formData.difficulty === level
-                                                            ? 'bg-white text-slate-800 shadow-md transform scale-[1.02]'
-                                                            : 'text-slate-400 hover:text-slate-600'
+                                                        ? 'bg-white text-slate-800 shadow-md transform scale-[1.02]'
+                                                        : 'text-slate-400 hover:text-slate-600'
                                                         }`}
                                                 >
                                                     {level === 'easy' ? 'سهلة 🙂' : level === 'hard' ? 'صعبة 🥵' : 'عادية 😐'}
