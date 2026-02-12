@@ -2,46 +2,19 @@ import React, { useState, useEffect } from 'react';
 import FocusModeOverlay from './FocusModeOverlay';
 import EditTaskModal from './EditTaskModal';
 import { logAchievement } from '../utils/achievements';
+import { formatDate, formatTimeLog } from '../utils/date';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut } from 'firebase/auth';
 import { collection, doc, setDoc, addDoc, onSnapshot, writeBatch, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { auth, db, appId } from '../firebase';
+import { THEMES, DEFAULT_SUBJECTS, INTERVALS, DIFFICULTY_CONFIG } from '../constants';
+import { useSubjects } from '../hooks/useSubjects';
+import { useLectures } from '../hooks/useLectures';
 import {
     CheckCircle, BrainCircuit, Settings, BookOpen, Save, FastForward, Info, Trash2, AlertTriangle, X,
     LogIn, LogOut, User, Plus, Minus, LayoutList, GripHorizontal, Maximize2, Layers, Zap, Coffee,
     Edit2, Flag, History, Play, Calendar, CheckSquare
 } from 'lucide-react';
-
-// --- Constants ---
-const THEMES = {
-    indigo: { name: 'نيلي', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
-    emerald: { name: 'زمردي', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
-    rose: { name: 'وردي', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
-    blue: { name: 'أزرق', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
-    amber: { name: 'كهرماني', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' },
-    purple: { name: 'بنفسجي', color: 'bg-purple-100 text-purple-800 border-purple-200', badge: 'bg-purple-600', darkBadge: 'bg-purple-500' },
-    cyan: { name: 'سماوي', color: 'bg-cyan-100 text-cyan-800 border-cyan-200', badge: 'bg-cyan-600', darkBadge: 'bg-cyan-500' },
-    pink: { name: 'زهري', color: 'bg-pink-100 text-pink-800 border-pink-200', badge: 'bg-pink-600', darkBadge: 'bg-pink-500' },
-    slate: { name: 'رمادي', color: 'bg-slate-100 text-slate-800 border-slate-200', badge: 'bg-slate-600', darkBadge: 'bg-slate-500' },
-    orange: { name: 'برتقالي', color: 'bg-orange-100 text-orange-800 border-orange-200', badge: 'bg-orange-600', darkBadge: 'bg-orange-500' },
-    teal: { name: 'فيروزي', color: 'bg-teal-100 text-teal-800 border-teal-200', badge: 'bg-teal-600', darkBadge: 'bg-teal-500' },
-};
-
-const DEFAULT_SUBJECTS = {
-    TSF: { name: 'تشريح', theme: 'indigo', ...THEMES.indigo },
-    CBG: { name: 'كيمياء حيوية', theme: 'emerald', ...THEMES.emerald },
-    BIO: { name: 'أحياء', theme: 'rose', ...THEMES.rose },
-    ANA: { name: 'تشريح', theme: 'blue', ...THEMES.blue },
-    PMD: { name: 'طب مجتمع', theme: 'amber', ...THEMES.amber }
-};
-
-const INTERVALS = [1, 2, 4, 7];
-
-const DIFFICULTY_CONFIG = {
-    easy: { label: 'سهلة', emoji: '🙂', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-    normal: { label: 'عادية', emoji: '😐', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    hard: { label: 'صعبة', emoji: '🥵', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' }
-};
 
 const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const [loading, setLoading] = useState(false);
@@ -49,9 +22,11 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
     const isMobile = useIsMobile();
 
-    // Data State
-    const [config, setConfig] = useState(null);
-    const [lectures, setLectures] = useState({});
+    // Custom Hooks
+    const { subjects, config, handleAddSubject: addSubjectCore, deleteSubject: removeSubjectCore, getSubjectStats: getSubjectStatsCore } = useSubjects(db, appId, user);
+    const { lectures, saveLecture, deleteLecture: removeLectureCore, getReviewLectures, getNewLectures: getNewLecturesCore, getSubjectLectures } = useLectures(db, appId, user);
+
+    // Data State (History only, others from hooks)
     const [history, setHistory] = useState([]);
 
     // Focus Mode State
@@ -66,8 +41,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const [tempConfig, setTempConfig] = useState({});
     const [selectedManageSubject, setSelectedManageSubject] = useState('ANA');
 
-    const [subjects, setSubjects] = useState(DEFAULT_SUBJECTS);
-    const SUBJECTS = subjects;
+    const SUBJECTS = subjects || DEFAULT_SUBJECTS;
     const [newSubject, setNewSubject] = useState({ code: '', name: '', theme: 'blue' });
     const [editingSubjectCode, setEditingSubjectCode] = useState(null);
 
@@ -103,39 +77,29 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         }
     };
 
+    // Sync tempConfig with config when loaded
+    useEffect(() => {
+        if (config) setTempConfig(config);
+    }, [config]);
+
+    // Show settings if config is missing (new user)
+    useEffect(() => {
+        if (user && config && Object.keys(config).length === 0) {
+            setShowSettings(true);
+            setSettingsTab('guide');
+        }
+    }, [user, config]);
+
+    // Listen to History (not yet hooked)
     useEffect(() => {
         if (!user) return;
-        const unsubConfig = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                setConfig(data);
-                setTempConfig(data);
-            } else {
-                setShowSettings(true);
-                setSettingsTab('guide');
-            }
-        });
-
-        const unsubLectures = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'lectures'), (snap) => {
-            const data = {};
-            snap.forEach(d => data[d.id] = d.data());
-            setLectures(data);
-        });
-
         const qHistory = query(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), orderBy('completedAt', 'desc'));
         const unsubHistory = onSnapshot(qHistory, (snap) => {
             const logs = [];
             snap.forEach(d => logs.push({ id: d.id, ...d.data() }));
             setHistory(logs);
         });
-
-        const unsubDefs = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), (snap) => {
-            if (snap.exists()) {
-                setSubjects(snap.data());
-            }
-        });
-
-        return () => { unsubConfig(); unsubLectures(); unsubHistory(); unsubDefs(); };
+        return () => unsubHistory();
     }, [user]);
 
     const handleSaveConfig = async (e) => {
@@ -149,18 +113,13 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
     const handleSaveTaskDetails = async (e) => {
         e.preventDefault();
         if (!user || !editingTask) return;
-        const data = {
-            id: editingTask.id,
-            subject: editingTask.subject,
-            number: editingTask.number,
-            title: editingTask.title || '',
-            description: editingTask.description || '',
-            difficulty: editingTask.difficulty || 'normal',
-            stage: editingTask.stage !== undefined ? editingTask.stage : 0,
-            nextReview: editingTask.nextReview !== undefined ? editingTask.nextReview : null
-        };
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', editingTask.id), data, { merge: true });
-        setEditingTask(null);
+        try {
+            await saveLecture(editingTask);
+            setEditingTask(null);
+        } catch (error) {
+            console.error(error);
+            alert("فشل الحفظ: " + error.message);
+        }
     };
 
     const resetSubjectProgress = async (subjCode) => {
@@ -368,27 +327,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
     const handleAddSubject = async (e) => {
         e.preventDefault();
-        if (!newSubject.code || !newSubject.name) return alert("يرجى ملء الكود والاسم");
-        const code = newSubject.code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-        // Check for duplicates only if we are NOT editing (or if we are renaming the code, which is disabled atm)
-        if (!editingSubjectCode && subjects[code]) return alert("هذا الكود موجود بالفعل!");
-
-        const theme = THEMES[newSubject.theme];
-        // FIX: Spread theme first so it doesn't overwrite the name
-        const newData = { ...subjects, [code]: { ...theme, name: newSubject.name, theme: newSubject.theme } };
-
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
-
-        if (!config || config[code] === undefined) {
-            // Only init config if it's a new subject
-            if (!editingSubjectCode) {
-                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [code]: 0 }, { merge: true });
-            }
+        try {
+            await addSubjectCore(newSubject, editingSubjectCode);
+            setNewSubject({ code: '', name: '', theme: 'blue' });
+            setEditingSubjectCode(null);
+            alert(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
+        } catch (error) {
+            alert(error.message);
         }
-        setNewSubject({ code: '', name: '', theme: 'blue' });
-        setEditingSubjectCode(null);
-        alert(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
     };
 
     const handleEditSubject = (code) => {
@@ -404,76 +350,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
     const deleteSubject = async (code) => {
         if (!confirm(`هل أنت متأكد من حذف مادة ${code}؟ لن يتم حذف المحاضرات القديمة ولكن لن تظهر المادة.`)) return;
-        const newData = { ...subjects };
-        delete newData[code];
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
-    };
-
-    const getSubjectStats = (subj) => {
-        const total = parseInt(config?.[subj] || 0);
-        let started = 0;
-        Object.values(lectures).forEach(l => {
-            if (l.subject === subj && l.stage > 0) started++;
-        });
-        const newCount = Math.max(0, total - started);
-        return { total, new: newCount };
-    };
-
-    const getDueReviews = () => {
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
-        return Object.values(lectures).filter(l => {
-            if (l.isCompleted || !l.nextReview || l.nextReview === 'COMPLETED') return false;
-            return new Date(l.nextReview) <= endOfDay;
-        }).sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
-    };
-
-    const getNewSuggestions = () => {
-        if (!config) return [];
-        const suggestions = [];
-        Object.keys(SUBJECTS).forEach(subj => {
-            const total = parseInt(config[subj]) || 0;
-            for (let i = 1; i <= total; i++) {
-                const id = `${subj}_${i}`;
-                if (!lectures[id] || lectures[id].stage === 0) {
-                    const existing = lectures[id] || {};
-                    suggestions.push({
-                        id, subject: subj, number: i, stage: 0,
-                        title: existing.title || '', description: existing.description || '', difficulty: existing.difficulty || 'normal'
-                    });
-                    break;
-                }
-            }
-        });
-        return suggestions;
-    };
-
-    const getManageLectures = () => {
-        if (!config || !selectedManageSubject) return [];
-        const total = parseInt(config[selectedManageSubject]) || 0;
-        const list = [];
-        for (let i = 1; i <= total; i++) {
-            const id = `${selectedManageSubject}_${i}`;
-            const lecture = lectures[id];
-            list.push({
-                id, subject: selectedManageSubject, number: i,
-                stage: lecture ? lecture.stage : 0, nextReview: lecture ? lecture.nextReview : null,
-                title: lecture?.title, description: lecture?.description, difficulty: lecture?.difficulty
-            });
+        try {
+            await removeSubjectCore(code);
+        } catch (error) {
+            console.error(error);
+            alert("حدث خطأ أثناء الحذف");
         }
-        return list;
     };
 
-    const formatDate = (isoString) => {
-        if (!isoString) return '';
-        if (isoString === 'COMPLETED') return 'مكتمل';
-        return new Date(isoString).toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' });
-    };
+    // Wrapper for hook function to match component usage
+    const getSubjectStats = (subj) => getSubjectStatsCore(subj, lectures);
 
-    const formatTimeLog = (isoString) => {
-        if (!isoString) return '';
-        return new Date(isoString).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-    };
 
     const openEditModal = (task) => {
         setEditingTask({ ...task, difficulty: task.difficulty || 'normal' });
@@ -502,8 +389,8 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
         );
     }
 
-    const reviews = getDueReviews();
-    const news = getNewSuggestions();
+    const reviews = getReviewLectures();
+    const news = getNewLecturesCore(config);
 
     return (
         <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
@@ -965,7 +852,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                         ))}
                                     </div>
                                     <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                                        {getManageLectures().length === 0 ? <p className="text-center text-slate-400 text-xs py-4">لا توجد محاضرات.</p> : getManageLectures().map(lecture => (
+                                        {getSubjectLectures(selectedManageSubject, config).length === 0 ? <p className="text-center text-slate-400 text-xs py-4">لا توجد محاضرات.</p> : getSubjectLectures(selectedManageSubject, config).map(lecture => (
                                             <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-none hover:bg-slate-50 group">
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>

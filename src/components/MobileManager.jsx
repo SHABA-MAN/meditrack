@@ -1,33 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db, appId } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { THEMES, DEFAULT_DIFFICULTY, getDifficultyLabel } from '../constants';
+import { useSubjects } from '../hooks/useSubjects';
+import { useLectures } from '../hooks/useLectures';
 import {
     Plus, ChevronRight, Search, Edit2, Trash2, X, Check, ArrowLeft,
     LayoutGrid, BookOpen
 } from 'lucide-react';
 
-// EXACT SAME THEMES as main app
-const THEMES = {
-    indigo: { name: 'نيلي', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', badge: 'bg-indigo-600', darkBadge: 'bg-indigo-500' },
-    emerald: { name: 'زمردي', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', badge: 'bg-emerald-600', darkBadge: 'bg-emerald-500' },
-    rose: { name: 'وردي', color: 'bg-rose-100 text-rose-800 border-rose-200', badge: 'bg-rose-600', darkBadge: 'bg-rose-500' },
-    blue: { name: 'أزرق', color: 'bg-blue-100 text-blue-800 border-blue-200', badge: 'bg-blue-600', darkBadge: 'bg-blue-500' },
-    amber: { name: 'كهرماني', color: 'bg-amber-100 text-amber-800 border-amber-200', badge: 'bg-amber-600', darkBadge: 'bg-amber-500' },
-    purple: { name: 'بنفسجي', color: 'bg-purple-100 text-purple-800 border-purple-200', badge: 'bg-purple-600', darkBadge: 'bg-purple-500' },
-    cyan: { name: 'سماوي', color: 'bg-cyan-100 text-cyan-800 border-cyan-200', badge: 'bg-cyan-600', darkBadge: 'bg-cyan-500' },
-    pink: { name: 'زهري', color: 'bg-pink-100 text-pink-800 border-pink-200', badge: 'bg-pink-600', darkBadge: 'bg-pink-500' },
-    slate: { name: 'رمادي', color: 'bg-slate-100 text-slate-800 border-slate-200', badge: 'bg-slate-600', darkBadge: 'bg-slate-500' },
-    orange: { name: 'برتقالي', color: 'bg-orange-100 text-orange-800 border-orange-200', badge: 'bg-orange-600', darkBadge: 'bg-orange-500' },
-    teal: { name: 'فيروزي', color: 'bg-teal-100 text-teal-800 border-teal-200', badge: 'bg-teal-600', darkBadge: 'bg-teal-500' },
-};
-
 const MobileManager = ({ user, onBack }) => {
     const [activeTab, setActiveTab] = useState('subjects');
 
-    // EXACT SAME state as main app
-    const [subjects, setSubjects] = useState({});
-    const [lectures, setLectures] = useState({});
-    const [config, setConfig] = useState(null);
+    // Use custom hooks
+    const { subjects, config, handleAddSubject: addSubjectCore, deleteSubject: removeSubjectCore } = useSubjects(db, appId, user);
+    const { lectures, saveLecture, deleteLecture: removeLectureCore, getSubjectLectures } = useLectures(db, appId, user);
+
     const [selectedSubject, setSelectedSubject] = useState(null);
 
     // Modal States
@@ -39,84 +27,49 @@ const MobileManager = ({ user, onBack }) => {
     const [newSubject, setNewSubject] = useState({ code: '', name: '', theme: 'blue' });
     const [editingSubjectCode, setEditingSubjectCode] = useState(null);
 
-    // EXACT SAME useEffect as main app
-    useEffect(() => {
-        if (!user) return;
+    // Derived state
+    const SUBJECTS = subjects || {};
 
-        const unsubConfig = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                setConfig(data);
-            }
-        });
-
-        const unsubLectures = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'lectures'), (snap) => {
-            const data = {};
-            snap.forEach(d => data[d.id] = d.data());
-            setLectures(data);
-        });
-
-        const unsubDefs = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), (snap) => {
-            if (snap.exists()) {
-                setSubjects(snap.data());
-            }
-        });
-
-        return () => { unsubConfig(); unsubLectures(); unsubDefs(); };
-    }, [user]);
-
-    // EXACT SAME handleAddSubject as main app
+    // Handle Subject Add/Edit
     const handleAddSubject = async (e) => {
         e.preventDefault();
-        if (!newSubject.code || !newSubject.name) return alert("يرجى ملء الكود والاسم");
-        const code = newSubject.code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-        if (!editingSubjectCode && subjects[code]) return alert("هذا الكود موجود بالفعل!");
-
-        const theme = THEMES[newSubject.theme];
-        const newData = { ...subjects, [code]: { ...theme, name: newSubject.name, theme: newSubject.theme } };
-
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
-
-        if (!config || config[code] === undefined) {
-            if (!editingSubjectCode) {
-                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [code]: 0 }, { merge: true });
-            }
+        try {
+            await addSubjectCore(newSubject, editingSubjectCode);
+            setNewSubject({ code: '', name: '', theme: 'blue' });
+            setEditingSubjectCode(null);
+            setShowAddModal(false);
+            alert(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
+        } catch (error) {
+            alert(error.message);
         }
-        setNewSubject({ code: '', name: '', theme: 'blue' });
-        setEditingSubjectCode(null);
-        setShowAddModal(false);
-        alert(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
     };
 
-    // EXACT SAME deleteSubject as main app
+    // Handle Subject Delete
     const deleteSubject = async (code) => {
         if (!confirm(`هل أنت متأكد من حذف مادة ${code}؟ لن يتم حذف المحاضرات القديمة ولكن لن تظهر المادة.`)) return;
-        const newData = { ...subjects };
-        delete newData[code];
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), newData);
-        setShowAddModal(false);
-        setSelectedSubject(null);
+        try {
+            await removeSubjectCore(code);
+            setShowAddModal(false);
+            setSelectedSubject(null);
+        } catch (e) {
+            console.error(e);
+            alert("حدث خطأ أثناء الحذف");
+        }
     };
 
-    // EXACT SAME handleSaveTaskDetails as main app
+    // Handle Lecture Save
     const handleSaveTaskDetails = async (e) => {
         e.preventDefault();
-        if (!user || !editingTask) return;
-        const data = {
-            id: editingTask.id,
-            subject: editingTask.subject,
-            number: editingTask.number,
-            title: editingTask.title || '',
-            description: editingTask.description || '',
-            difficulty: editingTask.difficulty || 'normal',
-            stage: editingTask.stage !== undefined ? editingTask.stage : 0,
-            nextReview: editingTask.nextReview !== undefined ? editingTask.nextReview : null
-        };
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', editingTask.id), data, { merge: true });
-        setEditingTask(null);
-        setShowAddModal(false);
-        alert("تم حفظ التعديلات ✅");
+        if (!editingTask) return;
+        try {
+            await saveLecture(editingTask);
+            setEditingTask(null);
+            setShowAddModal(false);
+            alert("تم حفظ التعديلات ✅");
+        } catch (e) {
+            console.error(e);
+            alert("فشل الحفظ");
+        }
     };
 
     // Delete lecture
@@ -126,11 +79,9 @@ const MobileManager = ({ user, onBack }) => {
         try {
             // Check if lecture exists in database
             if (lectures[lectureId]) {
-                // Delete the lecture document
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
+                await removeLectureCore(lectureId);
                 alert("تم حذف المحاضرة ✅");
             } else {
-                // Lecture doesn't have data yet, just show message
                 alert("لا توجد بيانات لهذه المحاضرة لحذفها");
             }
             setShowAddModal(false);
@@ -145,40 +96,9 @@ const MobileManager = ({ user, onBack }) => {
         if (!config || !selectedSubject) return;
         const currentCount = parseInt(config[selectedSubject] || 0);
         const newCount = currentCount + 1;
+        // Using direct setDoc here as it modifies config directly which is not exposed as setter in useSubjects yet
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [selectedSubject]: newCount }, { merge: true });
         alert(`تم إضافة محاضرة ${newCount} ✅`);
-    };
-
-    // EXACT SAME getSubjectStats as main app
-    const getSubjectStats = (subj) => {
-        const total = parseInt(config?.[subj] || 0);
-        let started = 0;
-        Object.values(lectures).forEach(l => {
-            if (l.subject === subj && l.stage > 0) started++;
-        });
-        const newCount = Math.max(0, total - started);
-        return { total, new: newCount };
-    };
-
-    // EXACT SAME getManageLectures as main app
-    const getManageLectures = () => {
-        if (!config || !selectedSubject) return [];
-        const total = parseInt(config[selectedSubject] || 0);
-        const list = [];
-        for (let i = 1; i <= total; i++) {
-            const id = `${selectedSubject}_${i}`;
-            const lecture = lectures[id];
-            list.push({
-                id, subject: selectedSubject, number: i,
-                stage: lecture ? lecture.stage : 0,
-                nextReview: lecture ? lecture.nextReview : null,
-                title: lecture?.title,
-                description: lecture?.description,
-                difficulty: lecture?.difficulty,
-                isCompleted: lecture?.isCompleted
-            });
-        }
-        return list;
     };
 
     const openEditModal = (task) => {
@@ -215,7 +135,7 @@ const MobileManager = ({ user, onBack }) => {
 
             <div className="grid grid-cols-2 gap-4">
                 {Object.entries(subjects).map(([code, data]) => {
-                    const stats = getSubjectStats(code);
+                    const stats = getSubjectStats(code, lectures);
                     return (
                         <div
                             key={code}
@@ -253,7 +173,7 @@ const MobileManager = ({ user, onBack }) => {
     );
 
     const LectureListView = () => {
-        const list = getManageLectures();
+        const list = getSubjectLectures(selectedSubject, config);
 
         const removeLastLecture = async () => {
             if (!config || !selectedSubject) return;

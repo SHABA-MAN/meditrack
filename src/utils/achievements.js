@@ -12,19 +12,20 @@ export const logAchievement = async (db, userId, type, data) => {
     // الحصول على التاريخ الحالي بصيغة YYYY-MM-DD
     const now = new Date();
     const dateKey = now.toISOString().split('T')[0]; // مثال: "2026-01-28"
-    
-    const achievementRef = doc(db, 'users', userId, 'achievements', dateKey);
-    
+
+    // Updated to use standardized artifacts path
+    const achievementRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
+
     // التحقق من وجود المستند
     const achievementDoc = await getDoc(achievementRef);
-    
+
     const achievementEntry = {
       id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type, // 'study' or 'task'
       timestamp: now.toISOString(),
       ...data
     };
-    
+
     if (achievementDoc.exists()) {
       // إضافة إلى القائمة الموجودة
       await updateDoc(achievementRef, {
@@ -37,7 +38,7 @@ export const logAchievement = async (db, userId, type, data) => {
         items: [achievementEntry]
       });
     }
-    
+
     console.log('✅ Achievement logged:', achievementEntry);
     return true;
   } catch (error) {
@@ -56,21 +57,22 @@ export const logAchievement = async (db, userId, type, data) => {
 export const getMonthAchievements = async (db, userId, year, month) => {
   try {
     const achievements = {};
-    
+
     // حساب عدد أيام الشهر
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     // جلب البيانات لكل يوم
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const achievementRef = doc(db, 'users', userId, 'achievements', dateKey);
+      // Updated to use standardized artifacts path
+      const achievementRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
       const achievementDoc = await getDoc(achievementRef);
-      
+
       if (achievementDoc.exists()) {
         achievements[dateKey] = achievementDoc.data();
       }
     }
-    
+
     return achievements;
   } catch (error) {
     console.error('❌ Error fetching achievements:', error);

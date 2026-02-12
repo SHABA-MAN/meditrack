@@ -46,7 +46,9 @@ const COLUMNS = {
   delegate: { id: 'delegate', title: 'غير مهم 🗑️', color: 'border-gray-500', bg: 'bg-gray-800/20', icon: Trash2 },
 };
 
-const API_URL = 'http://localhost:3001/api/telegram';
+// Use environment variable for API URL, fallback to localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = `${API_BASE_URL}/api/telegram`;
 
 const getVideoId = (url) => {
   if (!url) return null;
