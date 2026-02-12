@@ -64,12 +64,21 @@ export const getMonthAchievements = async (db, userId, year, month) => {
     // جلب البيانات لكل يوم
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      // Updated to use standardized artifacts path
-      const achievementRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
-      const achievementDoc = await getDoc(achievementRef);
 
-      if (achievementDoc.exists()) {
-        achievements[dateKey] = achievementDoc.data();
+      // Try new path first (with artifacts)
+      const newPathRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
+      const newPathDoc = await getDoc(newPathRef);
+
+      if (newPathDoc.exists()) {
+        achievements[dateKey] = newPathDoc.data();
+      } else {
+        // Fallback to old path (legacy data)
+        const oldPathRef = doc(db, 'users', userId, 'achievements', dateKey);
+        const oldPathDoc = await getDoc(oldPathRef);
+
+        if (oldPathDoc.exists()) {
+          achievements[dateKey] = oldPathDoc.data();
+        }
       }
     }
 
