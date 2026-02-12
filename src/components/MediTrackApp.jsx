@@ -789,6 +789,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                         <div className="bg-slate-50 p-4 border-b flex justify-between items-center">
                             <div className="flex gap-4 overflow-x-auto">
                                 <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
+                                <button onClick={() => setSettingsTab('mobile')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'mobile' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الموبايل</button>
                                 <button onClick={() => setSettingsTab('subjects')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'subjects' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>المواد</button>
                                 <button onClick={() => setSettingsTab('config')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الأعداد</button>
                                 <button onClick={() => setSettingsTab('manage')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'manage' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>التقدم</button>
@@ -808,6 +809,33 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
                                         <li><strong>الخطوة 2:</strong> اضغط "ابدأ الجلسة" للدخول في وضع التركيز.</li>
                                         <li><strong>الخطوة 3:</strong> كل إنجاز سيتم حفظه تلقائياً في سجل الجلسات.</li>
                                     </ul>
+                                </div>
+                            )}
+
+                            {settingsTab === 'mobile' && (
+                                <div className="space-y-6 text-center">
+                                    <div className="bg-slate-900 text-white p-6 rounded-none shadow-lg mt-4 inline-block mx-auto">
+                                        <BrainCircuit size={48} className="mx-auto mb-2" />
+                                        <h3 className="text-xl font-bold mb-1">نسخة الموبايل</h3>
+                                        <p className="text-slate-400 text-sm">MediTrack Mobile Manager</p>
+                                    </div>
+
+                                    <div className="max-w-md mx-auto space-y-4">
+                                        <p className="font-bold text-slate-800">كيفية التثبيت على الآيفون:</p>
+                                        <ol className="text-sm text-slate-600 space-y-2 text-right list-decimal list-inside bg-gray-50 p-4 border border-gray-200">
+                                            <li>اضغط على الزر بالأسفل لفتح صفحة المدير.</li>
+                                            <li>اضغط على زر المشاركة (Share) في المتصفح.</li>
+                                            <li>اختر <strong>"إضافة إلى الشاشة الرئيسية" (Add to Home Screen)</strong>.</li>
+                                            <li>سيظهر أيقونة التطبيق على شاشتك تعمل بكفاءة عالية!</li>
+                                        </ol>
+
+                                        <a
+                                            href="/manage"
+                                            className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-none transition shadow-md"
+                                        >
+                                            فتح صفحة المدير الآن
+                                        </a>
+                                    </div>
                                 </div>
                             )}
 
