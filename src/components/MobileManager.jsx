@@ -127,6 +127,15 @@ const MobileManager = ({ user, onBack }) => {
         alert("تم حذف المحاضرة ✅");
     };
 
+    // Add new lecture - increases config count
+    const addNewLecture = async () => {
+        if (!config || !selectedSubject) return;
+        const currentCount = parseInt(config[selectedSubject] || 0);
+        const newCount = currentCount + 1;
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [selectedSubject]: newCount }, { merge: true });
+        alert(`تم إضافة محاضرة ${newCount} ✅`);
+    };
+
     // EXACT SAME getSubjectStats as main app
     const getSubjectStats = (subj) => {
         const total = parseInt(config?.[subj] || 0);
@@ -141,7 +150,7 @@ const MobileManager = ({ user, onBack }) => {
     // EXACT SAME getManageLectures as main app
     const getManageLectures = () => {
         if (!config || !selectedSubject) return [];
-        const total = parseInt(config[selectedSubject]) || 0;
+        const total = parseInt(config[selectedSubject] || 0);
         const list = [];
         for (let i = 1; i <= total; i++) {
             const id = `${selectedSubject}_${i}`;
@@ -245,6 +254,12 @@ const MobileManager = ({ user, onBack }) => {
                             <h2 className="text-xl font-black text-slate-900 leading-none">{subjects[selectedSubject]?.name}</h2>
                             <p className="text-slate-400 text-xs font-bold mt-1 tracking-wide">{selectedSubject}</p>
                         </div>
+                        <button
+                            onClick={addNewLecture}
+                            className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 active:scale-90 transition-transform"
+                        >
+                            <Plus size={24} />
+                        </button>
                     </div>
                 </div>
 
@@ -254,7 +269,7 @@ const MobileManager = ({ user, onBack }) => {
                         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                             <BookOpen size={48} className="mb-4 opacity-20" />
                             <p className="font-bold text-sm">لا توجد محاضرات</p>
-                            <p className="text-xs mt-2">اذهب للإعدادات لتحديد عدد المحاضرات</p>
+                            <p className="text-xs mt-2">اضغط + لإضافة محاضرة</p>
                         </div>
                     ) : list.map(l => (
                         <div key={l.id} onClick={() => openEditModal(l)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center active:scale-[0.98] transition-all">
