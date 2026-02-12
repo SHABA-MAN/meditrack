@@ -122,9 +122,22 @@ const MobileManager = ({ user, onBack }) => {
     // Delete lecture
     const deleteLecture = async (lectureId) => {
         if (!confirm('هل أنت متأكد من حذف هذه المحاضرة؟')) return;
-        await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
-        setShowAddModal(false);
-        alert("تم حذف المحاضرة ✅");
+
+        try {
+            // Check if lecture exists in database
+            if (lectures[lectureId]) {
+                // Delete the lecture document
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
+                alert("تم حذف المحاضرة ✅");
+            } else {
+                // Lecture doesn't have data yet, just show message
+                alert("لا توجد بيانات لهذه المحاضرة لحذفها");
+            }
+            setShowAddModal(false);
+        } catch (error) {
+            console.error('Error deleting lecture:', error);
+            alert("حدث خطأ أثناء الحذف");
+        }
     };
 
     // Add new lecture - increases config count
