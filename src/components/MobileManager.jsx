@@ -242,6 +242,25 @@ const MobileManager = ({ user, onBack }) => {
     const LectureListView = () => {
         const list = getManageLectures();
 
+        const removeLastLecture = async () => {
+            if (!config || !selectedSubject) return;
+            const currentCount = parseInt(config[selectedSubject] || 0);
+            if (currentCount === 0) return alert('لا توجد محاضرات لحذفها');
+
+            if (!confirm(`هل تريد حذف المحاضرة رقم ${currentCount}؟`)) return;
+
+            const newCount = currentCount - 1;
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [selectedSubject]: newCount }, { merge: true });
+
+            // Also delete the lecture data if it exists
+            const lectureId = `${selectedSubject}_${currentCount}`;
+            if (lectures[lectureId]) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
+            }
+
+            alert(`تم حذف المحاضرة ${currentCount} ✅`);
+        };
+
         return (
             <div className="flex flex-col h-screen bg-slate-50">
                 {/* Header */}
@@ -254,9 +273,19 @@ const MobileManager = ({ user, onBack }) => {
                             <h2 className="text-xl font-black text-slate-900 leading-none">{subjects[selectedSubject]?.name}</h2>
                             <p className="text-slate-400 text-xs font-bold mt-1 tracking-wide">{selectedSubject}</p>
                         </div>
+                        {list.length > 0 && (
+                            <button
+                                onClick={removeLastLecture}
+                                className="p-2 bg-red-100 text-red-600 rounded-full shadow-sm active:scale-90 transition-transform"
+                                title="حذف آخر محاضرة"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        )}
                         <button
                             onClick={addNewLecture}
                             className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 active:scale-90 transition-transform"
+                            title="إضافة محاضرة جديدة"
                         >
                             <Plus size={24} />
                         </button>
@@ -292,8 +321,8 @@ const MobileManager = ({ user, onBack }) => {
                                 <div className="flex gap-1.5">
                                     {l.difficulty && (
                                         <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${l.difficulty === 'easy' ? 'bg-green-50 text-green-600' :
-                                                l.difficulty === 'hard' ? 'bg-red-50 text-red-600' :
-                                                    'bg-blue-50 text-blue-600'
+                                            l.difficulty === 'hard' ? 'bg-red-50 text-red-600' :
+                                                'bg-blue-50 text-blue-600'
                                             }`}>
                                             {l.difficulty === 'easy' ? 'سهلة' : l.difficulty === 'hard' ? 'صعبة' : 'عادية'}
                                         </span>
@@ -473,8 +502,8 @@ const MobileManager = ({ user, onBack }) => {
                                             type="button"
                                             onClick={() => setEditingTask({ ...editingTask, difficulty: level })}
                                             className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${editingTask.difficulty === level
-                                                    ? 'bg-white text-slate-800 shadow-md scale-[1.02]'
-                                                    : 'text-slate-400'
+                                                ? 'bg-white text-slate-800 shadow-md scale-[1.02]'
+                                                : 'text-slate-400'
                                                 }`}
                                         >
                                             {level === 'easy' ? 'سهلة 🙂' : level === 'hard' ? 'صعبة 🥵' : 'عادية 😐'}
@@ -484,11 +513,14 @@ const MobileManager = ({ user, onBack }) => {
                             </div>
 
                             <div className="pt-6 flex gap-3">
-                                {editingTask.stage > 0 && (
-                                    <button type="button" onClick={() => deleteLecture(editingTask.id)} className="p-4 rounded-xl bg-red-50 text-red-500 hover:bg-red-100">
-                                        <Trash2 size={24} />
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => deleteLecture(editingTask.id)}
+                                    className="p-4 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                                    title="حذف هذه المحاضرة"
+                                >
+                                    <Trash2 size={24} />
+                                </button>
                                 <button type="submit" className="flex-1 bg-slate-900 text-white font-bold text-lg p-4 rounded-xl shadow-xl active:scale-95 transition-transform">
                                     حفظ
                                 </button>
