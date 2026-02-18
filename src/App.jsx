@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import LifeTrack from './LifeTrack';
 import AchievementCalendar from './AchievementCalendar';
 import TimeBoxing from './TimeBoxing';
@@ -62,11 +63,14 @@ const App = () => {
     return <AchievementCalendar onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
   }
 
-  return <MediTrackApp
-    onSwitchToLifeTrack={() => setCurrentView('lifetrack')}
-    onSwitchToTimeBoxing={() => setCurrentView('timeboxing')}
-    user={user}
-  />;
+  return <>
+    <Toaster position="top-center" toastOptions={{ duration: 3000, style: { background: '#1e293b', color: '#f1f5f9', borderRadius: '12px', fontSize: '14px', direction: 'rtl' } }} />
+    <MediTrackApp
+      onSwitchToLifeTrack={() => setCurrentView('lifetrack')}
+      onSwitchToTimeBoxing={() => setCurrentView('timeboxing')}
+      user={user}
+    />
+  </>;
 };
 
 export default App;

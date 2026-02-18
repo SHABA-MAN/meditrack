@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { logAchievement } from './utils/achievements';
 import { useIsMobile } from './hooks/useIsMobile';
+import { appId } from './firebase';
+import toast from 'react-hot-toast';
 import {
   collection,
   doc,
@@ -90,13 +92,7 @@ const renderTextWithLinks = (text) => {
 };
 
 const LifeTrack = ({ onBack, user, db }) => {
-  // Use the SAME appId as the main app to keep data consolidated
-  // Or keep it separate but under the same User UID. 
-  // User asked to link it to the same Google Account, so using the passed 'user' object is Key.
-  // We can keep 'lifetrack-v1' as a sub-collection or separate artifact ID if we want separation of concerns,
-  // BUT to ensure it's "the same account", we just rely on `user.uid`.
-
-  const appId = 'meditrack-v1'; // Unified App ID
+  // Use centralized appId from firebase.js
 
   // Core State
   // const [user, setUser] = useState(null); // REMOVED LOCAL USER STATE
@@ -508,7 +504,7 @@ const LifeTrack = ({ onBack, user, db }) => {
 
   const syncTelegram = async () => {
     if (!config.botToken) {
-      alert("الرجاء ضبط إعدادات البوت أولاً");
+      toast.error("الرجاء ضبط إعدادات البوت أولاً");
       setShowSettings(true);
       return;
     }
@@ -540,7 +536,7 @@ const LifeTrack = ({ onBack, user, db }) => {
       if (maxId > (config.lastUpdateId || 0)) {
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'telegram'), { ...config, lastUpdateId: maxId });
       }
-      if (newCount > 0) alert(`تم استيراد ${newCount} هدف جديد 📨`);
+      if (newCount > 0) toast.success(`تم استيراد ${newCount} هدف جديد 📨`);
     } catch (err) {
       console.error(err);
       setServerError(true);
@@ -558,11 +554,11 @@ const LifeTrack = ({ onBack, user, db }) => {
       if (added > 0) {
         setManualText('');
         setShowAddModal(false);
-        alert('تمت إضافة الهدف بنجاح! 🎉');
+        toast.success('تمت إضافة الهدف بنجاح! 🎉');
       }
     } catch (e) {
       console.error(e);
-      alert('حدث خطأ أثناء الإضافة');
+      toast.error('حدث خطأ أثناء الإضافة');
     } finally {
       setSyncing(false);
     }
@@ -574,7 +570,7 @@ const LifeTrack = ({ onBack, user, db }) => {
     const matches = task.originalText.match(ytRegex);
 
     if (!matches || matches.length < 2) {
-      alert("لا توجد قائمة فيديوهات لاستخراجها (أقل من رابطين).");
+      toast.error("لا توجد قائمة فيديوهات لاستخراجها (أقل من رابطين).");
       return;
     }
 
@@ -618,17 +614,17 @@ const LifeTrack = ({ onBack, user, db }) => {
     // Remove from focus queue if present
     setFocusQueue(prevQueue => prevQueue.filter(q => q.id !== task.id));
     setEditingTask(null);
-    alert("تم تقسيم السلسلة بنجاح! 🎉");
+    toast.success("تم تقسيم السلسلة بنجاح! 🎉");
   };
 
   const convertPlaylistToVideos = async (task) => {
     if (!task.playlistId) {
-      alert("هذا الهدف ليس قائمة تشغيل يوتيوب");
+      toast.error("هذا الهدف ليس قائمة تشغيل يوتيوب");
       return;
     }
 
     if (!config.youtubeApiKey) {
-      alert("الرجاء إضافة YouTube API Key في الإعدادات أولاً");
+      toast.error("الرجاء إضافة YouTube API Key في الإعدادات أولاً");
       setShowSettings(true);
       return;
     }
@@ -656,7 +652,7 @@ const LifeTrack = ({ onBack, user, db }) => {
       const videos = data.videos || [];
 
       if (videos.length === 0) {
-        alert("لم يتم العثور على فيديوهات في القائمة");
+        toast.error("لم يتم العثور على فيديوهات في القائمة");
         return;
       }
 
@@ -690,10 +686,10 @@ const LifeTrack = ({ onBack, user, db }) => {
       // Delete original playlist task
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
       setEditingTask(null);
-      alert(`تم تحويل القائمة إلى ${createdCount} فيديو منفصل! 🎉`);
+      toast.success(`تم تحويل القائمة إلى ${createdCount} فيديو منفصل! 🎉`);
     } catch (error) {
       console.error('Failed to convert playlist:', error);
-      alert(`خطأ: ${error.message}`);
+      toast.error(`خطأ: ${error.message}`);
     }
   };
 
@@ -732,7 +728,7 @@ const LifeTrack = ({ onBack, user, db }) => {
       setEditingTask(null);
     } catch (e) {
       console.error("Failed to save task", e);
-      alert("فشل حفظ التعديلات");
+      toast.error("فشل حفظ التعديلات");
     }
   };
 
@@ -835,7 +831,7 @@ const LifeTrack = ({ onBack, user, db }) => {
           }
         }
 
-        alert("أحسنت! تم تسجيل الإنجاز ✅");
+        toast.success("أحسنت! تم تسجيل الإنجاز ✅");
       }
     } else {
       if (confirm("إتمام الهدف وحذف الرسالة نهائياً؟")) {
@@ -1768,7 +1764,7 @@ const LifeTrack = ({ onBack, user, db }) => {
                       }
                     }
                   }
-                  alert(`تم تحديث ${fixCount} هدف بنجاح!`);
+                  toast.success(`تم تحديث ${fixCount} هدف بنجاح!`);
                 }}
                 className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-none text-xs font-bold transition flex items-center justify-center gap-2"
               >
@@ -1776,7 +1772,7 @@ const LifeTrack = ({ onBack, user, db }) => {
               </button>
             </div>
 
-            <div className="flex gap-3"><button onClick={async () => { if (!user) return; await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'telegram'), config); setShowSettings(false); alert("تم الحفظ!"); }} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transition">حفظ الإعدادات</button><button onClick={() => setShowSettings(false)} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">إغلاق</button></div>
+            <div className="flex gap-3"><button onClick={async () => { if (!user) return; await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'telegram'), config); setShowSettings(false); toast.success("تم الحفظ!"); }} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transition">حفظ الإعدادات</button><button onClick={() => setShowSettings(false)} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold">إغلاق</button></div>
           </div>
         </div>
       )}

@@ -7,6 +7,8 @@ import {
     query,
     orderBy
 } from 'firebase/firestore';
+import { appId } from './firebase';
+import toast from 'react-hot-toast';
 import { useIsMobile } from './hooks/useIsMobile';
 import {
     ArrowRight,
@@ -69,7 +71,7 @@ function hourToAngle(hour) {
 }
 
 const TimeBoxing = ({ onBack, user, db }) => {
-    const appId = 'meditrack-v1';
+    // appId imported from firebase.js
     const isMobile = useIsMobile();
 
     // ---- State ----

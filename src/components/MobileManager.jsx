@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { db, appId } from '../firebase';
+import toast from 'react-hot-toast';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { THEMES } from '../constants';
 import { useSubjects } from '../hooks/useSubjects';
@@ -38,9 +39,9 @@ const MobileManager = ({ user, onBack }) => {
             setNewSubject({ code: '', name: '', theme: 'blue' });
             setEditingSubjectCode(null);
             setShowAddModal(false);
-            alert(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
+            toast.success(editingSubjectCode ? "تم تعديل المادة بنجاح ✅" : "تم إضافة المادة بنجاح ✅");
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         }
     };
 
@@ -53,7 +54,7 @@ const MobileManager = ({ user, onBack }) => {
             setSelectedSubject(null);
         } catch (e) {
             console.error(e);
-            alert("حدث خطأ أثناء الحذف");
+            toast.error("حدث خطأ أثناء الحذف");
         }
     };
 
@@ -65,10 +66,10 @@ const MobileManager = ({ user, onBack }) => {
             await saveLecture(editingTask);
             setEditingTask(null);
             setShowAddModal(false);
-            alert("تم حفظ التعديلات ✅");
+            toast.success("تم حفظ التعديلات ✅");
         } catch (e) {
             console.error(e);
-            alert("فشل الحفظ");
+            toast.error("فشل الحفظ");
         }
     };
 
@@ -80,14 +81,14 @@ const MobileManager = ({ user, onBack }) => {
             // Check if lecture exists in database
             if (lectures[lectureId]) {
                 await removeLectureCore(lectureId);
-                alert("تم حذف المحاضرة ✅");
+                toast.success("تم حذف المحاضرة ✅");
             } else {
-                alert("لا توجد بيانات لهذه المحاضرة لحذفها");
+                toast("لا توجد بيانات لهذه المحاضرة لحذفها");
             }
             setShowAddModal(false);
         } catch (error) {
             console.error('Error deleting lecture:', error);
-            alert("حدث خطأ أثناء الحذف");
+            toast.error("حدث خطأ أثناء الحذف");
         }
     };
 
@@ -111,7 +112,7 @@ const MobileManager = ({ user, onBack }) => {
             nextReview: null,
             isCompleted: false
         }, { merge: true });
-        alert(`تم إضافة محاضرة ${newCount} ✅`);
+        toast.success(`تم إضافة محاضرة ${newCount} ✅`);
     };
 
     const openEditModal = (task) => {
@@ -191,7 +192,7 @@ const MobileManager = ({ user, onBack }) => {
         const removeLastLecture = async () => {
             if (!config || !selectedSubject) return;
             const currentCount = parseInt(config[selectedSubject] || 0);
-            if (currentCount === 0) return alert('لا توجد محاضرات لحذفها');
+            if (currentCount === 0) return toast.error('لا توجد محاضرات لحذفها');
 
             if (!confirm(`هل تريد حذف المحاضرة رقم ${currentCount}؟`)) return;
 
@@ -204,7 +205,7 @@ const MobileManager = ({ user, onBack }) => {
                 await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId));
             }
 
-            alert(`تم حذف المحاضرة ${currentCount} ✅`);
+            toast.success(`تم حذف المحاضرة ${currentCount} ✅`);
         };
 
         return (
