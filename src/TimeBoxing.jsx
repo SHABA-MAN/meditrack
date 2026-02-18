@@ -132,7 +132,14 @@ const TimeBoxing = ({ onBack, user, db }) => {
         const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'));
         const unsub = onSnapshot(q, (snap) => {
             const list = [];
-            snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+            const validStages = ['inbox', 'do_first', 'schedule', 'delegate'];
+            snap.forEach(d => {
+                const data = d.data();
+                // Filter out tasks with invalid stages or explicitly marked deleted (if any)
+                if (validStages.includes(data.stage)) {
+                    list.push({ id: d.id, ...data });
+                }
+            });
             setTasks(list);
             setLoading(false);
         });
