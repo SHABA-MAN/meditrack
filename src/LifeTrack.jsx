@@ -316,7 +316,7 @@ const LifeTrack = ({ onBack, user, db }) => {
       let thumbnail = null;
       if (playlistId && config.youtubeApiKey) {
         try {
-          const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+          const ytRes = await fetch(`${API_BASE_URL}/api/youtube/playlistInfo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
@@ -331,7 +331,7 @@ const LifeTrack = ({ onBack, user, db }) => {
         }
       } else if (videoId && config.youtubeApiKey) {
         try {
-          const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
+          const ytRes = await fetch(`${API_BASE_URL}/api/youtube/videoInfo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
@@ -387,7 +387,7 @@ const LifeTrack = ({ onBack, user, db }) => {
           let thumbnail = null;
           if (playlistId && config.youtubeApiKey) {
             try {
-              const ytRes = await fetch('http://localhost:3001/api/youtube/playlistInfo', {
+              const ytRes = await fetch(`${API_BASE_URL}/api/youtube/playlistInfo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ playlistId, apiKey: config.youtubeApiKey })
@@ -402,7 +402,7 @@ const LifeTrack = ({ onBack, user, db }) => {
             }
           } else if (videoId && config.youtubeApiKey) {
             try {
-              const ytRes = await fetch('http://localhost:3001/api/youtube/videoInfo', {
+              const ytRes = await fetch(`${API_BASE_URL}/api/youtube/videoInfo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ videoId, apiKey: config.youtubeApiKey })
@@ -615,6 +615,8 @@ const LifeTrack = ({ onBack, user, db }) => {
 
     // Remove Original Container Task
     await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id));
+    // Remove from focus queue if present
+    setFocusQueue(prevQueue => prevQueue.filter(q => q.id !== task.id));
     setEditingTask(null);
     alert("تم تقسيم السلسلة بنجاح! 🎉");
   };
@@ -635,7 +637,7 @@ const LifeTrack = ({ onBack, user, db }) => {
 
     try {
       // Fetch playlist videos
-      const res = await fetch('http://localhost:3001/api/youtube/playlistItems', {
+      const res = await fetch(`${API_BASE_URL}/api/youtube/playlistItems`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -943,6 +945,9 @@ const LifeTrack = ({ onBack, user, db }) => {
         stage: targetTask.stage,
         updatedAt: new Date().toISOString()
       });
+
+      // Remove from focus queue if present
+      setFocusQueue(prevQueue => prevQueue.filter(q => q.id !== draggedTask.id));
 
       // Expand the group
       setExpandedGroups(new Set([...expandedGroups, targetTask.id]));

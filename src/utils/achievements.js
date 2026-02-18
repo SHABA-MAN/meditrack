@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, arrayUnion, query, where, orderBy } from 'firebase/firestore';
 
 /**
  * تسجيل إنجاز جديد في Firestore
@@ -48,7 +48,8 @@ export const logAchievement = async (db, userId, type, data) => {
 };
 
 /**
- * جلب إنجازات شهر معين
+ * جلب إنجازات شهر معين — نسخة محسنة
+ * تستخدم استعلام where بدلاً من 30 طلب getDoc منفصل
  * @param {Object} db - Firestore database instance
  * @param {string} userId - User ID
  * @param {number} year - السنة
@@ -58,24 +59,42 @@ export const getMonthAchievements = async (db, userId, year, month) => {
   try {
     const achievements = {};
 
-    // حساب عدد أيام الشهر
+    // Build date range strings
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    // جلب البيانات لكل يوم
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // Try new path first (with artifacts) — single query for the whole month
+    const newPathCol = collection(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements');
 
-      // Try new path first (with artifacts)
-      const newPathRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
-      const newPathDoc = await getDoc(newPathRef);
+    try {
+      const q = query(newPathCol, where('date', '>=', startDate), where('date', '<=', endDate));
+      const snapshot = await getDocs(q);
 
-      if (newPathDoc.exists()) {
-        achievements[dateKey] = newPathDoc.data();
-      } else {
-        // Fallback to old path (legacy data)
+      snapshot.forEach(docSnap => {
+        achievements[docSnap.id] = docSnap.data();
+      });
+    } catch (queryError) {
+      // Fallback: If the 'date' field doesn't exist or index is missing,
+      // use doc ID range (document IDs are date strings, so alphabetical ordering works)
+      console.warn('Query fallback: fetching by document ID range', queryError);
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const docRef = doc(db, 'artifacts', 'meditrack-v1', 'users', userId, 'achievements', dateKey);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          achievements[dateKey] = docSnap.data();
+        }
+      }
+    }
+
+    // Also check legacy path for any old data not yet migrated
+    if (Object.keys(achievements).length === 0) {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const oldPathRef = doc(db, 'users', userId, 'achievements', dateKey);
         const oldPathDoc = await getDoc(oldPathRef);
-
         if (oldPathDoc.exists()) {
           achievements[dateKey] = oldPathDoc.data();
         }

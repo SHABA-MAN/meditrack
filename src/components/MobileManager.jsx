@@ -91,13 +91,26 @@ const MobileManager = ({ user, onBack }) => {
         }
     };
 
-    // Add new lecture - increases config count
+    // Add new lecture - increases config count AND creates default document
     const addNewLecture = async () => {
         if (!config || !selectedSubject) return;
         const currentCount = parseInt(config[selectedSubject] || 0);
         const newCount = currentCount + 1;
-        // Using direct setDoc here as it modifies config directly which is not exposed as setter in useSubjects yet
+        const lectureId = `${selectedSubject}_${newCount}`;
+        // Update config count
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), { ...config, [selectedSubject]: newCount }, { merge: true });
+        // Create default lecture document so it appears immediately in lists
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), {
+            id: lectureId,
+            subject: selectedSubject,
+            number: newCount,
+            title: '',
+            description: '',
+            difficulty: 'normal',
+            stage: 0,
+            nextReview: null,
+            isCompleted: false
+        }, { merge: true });
         alert(`تم إضافة محاضرة ${newCount} ✅`);
     };
 

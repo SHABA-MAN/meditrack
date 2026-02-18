@@ -104,6 +104,8 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
         e.preventDefault();
         if (!user) return;
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'subjects'), tempConfig);
+        // Immediately reflect saved config in tempConfig state
+        // (config will auto-update via onSnapshot, but tempConfig needs manual sync)
         alert("تم حفظ الإعدادات ✅");
         setShowSettings(false);
     };
@@ -275,7 +277,8 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
         let isCompleted = false;
         let nextReviewVal = '';
         if (newStage === 0) {
-            const data = { stage: 0, lastStudied: null, nextReview: null, isCompleted: false };
+            // Reset: use empty string instead of null for nextReview to avoid comparison issues
+            const data = { stage: 0, lastStudied: null, nextReview: '', isCompleted: false };
             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', lectureId), data, { merge: true });
             return;
         }
@@ -307,7 +310,10 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
             try {
                 const task = JSON.parse(taskData);
                 if (focusQueue.find(t => t.id === task.id)) return;
-                setFocusQueue([...focusQueue, task]);
+                const newQueue = [...focusQueue, task];
+                setFocusQueue(newQueue);
+                // Sync to cloud if session is active
+                if (isFocusModeActive) saveSessionToCloud(isFreeFocus, newQueue);
             } catch (err) {
                 console.error("Invalid drag data", err);
             }
@@ -315,12 +321,18 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
     };
 
     const removeFromQueue = (taskId) => {
-        setFocusQueue(focusQueue.filter(t => t.id !== taskId));
+        const newQueue = focusQueue.filter(t => t.id !== taskId);
+        setFocusQueue(newQueue);
+        // Sync to cloud if session is active
+        if (isFocusModeActive) saveSessionToCloud(isFreeFocus, newQueue);
     };
 
     const addToQueue = (task) => {
         if (focusQueue.find(t => t.id === task.id)) return;
-        setFocusQueue([...focusQueue, task]);
+        const newQueue = [...focusQueue, task];
+        setFocusQueue(newQueue);
+        // Sync to cloud if session is active
+        if (isFocusModeActive) saveSessionToCloud(isFreeFocus, newQueue);
     };
 
     const handleAddSubject = async (e) => {

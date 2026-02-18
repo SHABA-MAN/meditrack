@@ -241,11 +241,17 @@ const TimeBoxing = ({ onBack, user, db }) => {
         const source = e.dataTransfer.getData('source');
         const itemType = e.dataTransfer.getData('itemType') || 'task';
         if (!taskId) return;
+        // Validate hour range
+        if (hour < 0 || hour > 23) return;
 
         const newItems = { ...scheduledItems };
         if (source === 'scheduled') {
             const existing = newItems[taskId];
-            if (existing) newItems[taskId] = { ...existing, startHour: hour };
+            if (existing) {
+                // Clamp duration so it doesn't overflow past 24
+                const maxDuration = 24 - hour;
+                newItems[taskId] = { ...existing, startHour: hour, duration: Math.min(existing.duration, maxDuration) };
+            }
         } else {
             newItems[taskId] = { startHour: hour, duration: 1, completed: false, type: itemType };
         }
@@ -372,7 +378,10 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const changeDuration = (taskId, delta) => {
         const item = scheduledItems[taskId];
         if (!item) return;
-        const newDuration = Math.max(0.5, Math.min(item.duration + delta, 24 - item.startHour));
+        const maxAllowed = 24 - item.startHour;
+        if (maxAllowed <= 0) return; // startHour is already 24 (shouldn't happen)
+        const newDuration = Math.max(0.5, Math.min(item.duration + delta, maxAllowed));
+        if (newDuration === item.duration) return; // No change
         const newItems = { ...scheduledItems, [taskId]: { ...item, duration: newDuration } };
         setScheduledItems(newItems);
         savePlanToFirebase(newItems);
