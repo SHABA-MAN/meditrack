@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LifeTrack from './LifeTrack';
 import AchievementCalendar from './AchievementCalendar';
+import TimeBoxing from './TimeBoxing';
 import MediTrackApp from './components/MediTrackApp';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -53,12 +54,17 @@ const App = () => {
     return <LifeTrack onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
   }
 
+  if (currentView === 'timeboxing') {
+    return <TimeBoxing onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
+  }
+
   if (currentView === 'calendar') {
     return <AchievementCalendar onBack={() => setCurrentView('meditrack')} user={user} db={db} />;
   }
 
   return <MediTrackApp
     onSwitchToLifeTrack={() => setCurrentView('lifetrack')}
+    onSwitchToTimeBoxing={() => setCurrentView('timeboxing')}
     user={user}
   />;
 };

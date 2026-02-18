@@ -13,10 +13,10 @@ import { useLectures } from '../hooks/useLectures';
 import {
     CheckCircle, BrainCircuit, Settings, BookOpen, Save, FastForward, Info, Trash2, AlertTriangle, X,
     LogIn, LogOut, User, Plus, Minus, LayoutList, GripHorizontal, Maximize2, Layers, Zap, Coffee,
-    Edit2, Flag, History, Play, Calendar, CheckSquare
+    Edit2, Flag, History, Play, Calendar, CheckSquare, Clock
 } from 'lucide-react';
 
-const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
+const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState(null);
 
@@ -446,6 +446,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, user }) => {
 
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={14} className="text-amber-500" /> LifeTrack</button>
+                    <button onClick={onSwitchToTimeBoxing} className="hidden md:flex bg-indigo-600 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-indigo-700 transition shadow-sm border border-indigo-500 animate-in fade-in"><Clock size={14} /> TimeBoxing</button>
                     <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-emerald-700 transition shadow-sm"><Calendar size={14} /> التقويم</button>
                     <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الدليل"><Info size={16} /></button>
                     <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الإعدادات"><Settings size={16} /></button>
