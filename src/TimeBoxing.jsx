@@ -5,7 +5,9 @@ import {
     setDoc,
     onSnapshot,
     query,
-    orderBy
+    orderBy,
+    deleteDoc,
+    updateDoc
 } from 'firebase/firestore';
 import { logAchievement } from './utils/achievements';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -28,10 +30,18 @@ import {
 
 // ---- SVG Geometry Helpers ----
 const DEG = Math.PI / 180;
-const CX = 250, CY = 250; // clock center
-const CLOCK_R = 210; // outer radius
-const INNER_R = 100; // inner radius (donut hole)
-const LABEL_R = 230; // where hour numbers sit
+const CX = 300, CY = 300; // clock center
+const CLOCK_R = 265;       // outer radius
+const INNER_R = 120;       // inner radius (donut hole)
+const LABEL_R = 287;       // where hour numbers sit
+
+// ---- YouTube helper ----
+const getVideoId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
 
 function polarToXY(cx, cy, r, angleDeg) {
     const rad = (angleDeg - 90) * DEG; // -90 so 0° = top
@@ -254,18 +264,100 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const toggleComplete = async (taskId) => {
         const item = scheduledItems[taskId];
         if (!item) return;
-        const newCompleted = !item.completed;
-        const newItems = { ...scheduledItems, [taskId]: { ...item, completed: newCompleted } };
-        setScheduledItems(newItems);
-        savePlanToFirebase(newItems);
-        if (newCompleted && user) {
-            const itemData = findItemData(taskId, item.type);
-            if (itemData) {
-                await logAchievement(db, user.uid, item.type === 'lecture' ? 'study' : 'task', {
-                    title: itemData.title || `Lec ${itemData.number}`,
-                    stage: 'TimeBoxing',
-                    ...(item.type === 'lecture' ? { subject: itemData.subject, number: itemData.number } : {})
+
+        // If already completed, just toggle off (visual only)
+        if (item.completed) {
+            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: false } };
+            setScheduledItems(newItems);
+            savePlanToFirebase(newItems);
+            return;
+        }
+
+        // --- Completing ---
+        if (item.type === 'lecture') {
+            // Update lecture stage in Firebase
+            const lectureData = lectures[taskId];
+            if (lectureData) {
+                const INTERVALS = [1, 2, 4, 7];
+                const currentStage = lectureData.stage || 0;
+                const nextStage = currentStage + 1;
+                const isFullyCompleted = nextStage > INTERVALS.length;
+                const nextReviewDate = isFullyCompleted
+                    ? null
+                    : (() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + INTERVALS[currentStage]);
+                        return d.toISOString().split('T')[0];
+                    })();
+
+                try {
+                    await updateDoc(
+                        doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', taskId),
+                        {
+                            stage: nextStage,
+                            nextReview: nextReviewDate,
+                            isCompleted: isFullyCompleted
+                        }
+                    );
+                } catch (e) {
+                    // Lecture might not exist yet in DB (stage 0 = not saved)
+                    await setDoc(
+                        doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', taskId),
+                        {
+                            id: taskId,
+                            subject: taskId.split('_')[0],
+                            number: parseInt(taskId.split('_')[1]) || 1,
+                            stage: nextStage,
+                            nextReview: nextReviewDate,
+                            isCompleted: isFullyCompleted,
+                            title: lectureData.title || '',
+                            description: lectureData.description || '',
+                            difficulty: lectureData.difficulty || 'normal'
+                        },
+                        { merge: true }
+                    );
+                }
+
+                await logAchievement(db, user.uid, 'study', {
+                    title: lectureData.title || `Lec ${lectureData.number}`,
+                    subject: lectureData.subject,
+                    number: lectureData.number,
+                    stage: 'TimeBoxing'
                 });
+            }
+
+            // Mark as completed in daily plan
+            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
+            setScheduledItems(newItems);
+            savePlanToFirebase(newItems);
+
+        } else {
+            // Task
+            const taskData = tasks.find(t => t.id === taskId);
+            if (!taskData) return;
+
+            // Log achievement
+            await logAchievement(db, user.uid, 'task', {
+                title: taskData.title,
+                stage: taskData.stage || 'TimeBoxing'
+            });
+
+            if (taskData.isRecurring) {
+                // Recurring: just mark completed in daily plan, keep in pool
+                const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
+                setScheduledItems(newItems);
+                savePlanToFirebase(newItems);
+            } else {
+                // Non-recurring: mark completed in daily plan AND delete from tasks collection
+                const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
+                setScheduledItems(newItems);
+                savePlanToFirebase(newItems);
+                // Delete from tasks collection
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId));
+                } catch (e) {
+                    console.error('Failed to delete task:', e);
+                }
             }
         }
     };
@@ -372,9 +464,9 @@ const TimeBoxing = ({ onBack, user, db }) => {
         return (
             <svg
                 ref={svgRef}
-                viewBox="0 0 500 500"
-                className="w-full max-w-[500px] mx-auto select-none"
-                style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.08))' }}
+                viewBox="0 0 600 600"
+                className="w-full max-w-[600px] mx-auto select-none"
+                style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' }}
             >
                 {/* Background circle */}
                 <circle cx={CX} cy={CY} r={CLOCK_R} fill="#f8fafc" stroke="#e2e8f0" strokeWidth="2" />
@@ -701,18 +793,39 @@ const TimeBoxing = ({ onBack, user, db }) => {
                                     const colors = getStageColor(item.stage);
                                     return (
                                         <div key={item.id} draggable onDragStart={(e) => handlePoolDragStart(e, item, 'task')}
-                                            className="bg-white p-2.5 border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-grab active:cursor-grabbing rounded-none group">
-                                            <div className="flex items-start gap-2">
-                                                <div className={`w-1 h-8 rounded-none mt-0.5 flex-shrink-0 ${colors.bg}`}></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-slate-700 text-xs truncate">{item.title || 'بدون عنوان'}</p>
-                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none ${colors.light} ${colors.text} ${colors.border} border`}>{getStageLabel(item.stage)}</span>
-                                                        {item.isRecurring && <span className="text-[8px] font-bold px-1 py-0.5 rounded-none bg-amber-50 text-amber-600 border border-amber-200">مستمر</span>}
+                                            className="bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-grab active:cursor-grabbing rounded-none group overflow-hidden">
+                                            {/* Video thumbnail */}
+                                            {(() => {
+                                                const vid = getVideoId(item.videoUrl);
+                                                return vid ? (
+                                                    <div className="relative w-full h-16 overflow-hidden bg-slate-100">
+                                                        <img
+                                                            src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                                            <div className="w-7 h-7 bg-red-600 rounded-full flex items-center justify-center">
+                                                                <svg viewBox="0 0 24 24" fill="white" className="w-3.5 h-3.5 ml-0.5"><path d="M8 5v14l11-7z" /></svg>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    {item.description && <p className="text-[9px] text-slate-400 mt-1 truncate">{item.description}</p>}
+                                                ) : null;
+                                            })()}
+                                            <div className="p-2.5">
+                                                <div className="flex items-start gap-2">
+                                                    <div className={`w-1 h-8 rounded-none mt-0.5 flex-shrink-0 ${colors.bg}`}></div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-slate-700 text-xs truncate">{item.title || 'بدون عنوان'}</p>
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none ${colors.light} ${colors.text} ${colors.border} border`}>{getStageLabel(item.stage)}</span>
+                                                            {item.isRecurring && <span className="text-[8px] font-bold px-1 py-0.5 rounded-none bg-amber-50 text-amber-600 border border-amber-200">مستمر 🔄</span>}
+                                                        </div>
+                                                        {item.description && <p className="text-[9px] text-slate-400 mt-1 truncate">{item.description}</p>}
+                                                    </div>
+                                                    <GripVertical size={14} className="text-slate-200 group-hover:text-slate-400 transition flex-shrink-0 mt-1" />
                                                 </div>
-                                                <GripVertical size={14} className="text-slate-200 group-hover:text-slate-400 transition flex-shrink-0 mt-1" />
                                             </div>
                                         </div>
                                     );
