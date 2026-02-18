@@ -5,11 +5,8 @@ import {
     setDoc,
     onSnapshot,
     query,
-    orderBy,
-    deleteDoc,
-    updateDoc
+    orderBy
 } from 'firebase/firestore';
-import { logAchievement } from './utils/achievements';
 import { useIsMobile } from './hooks/useIsMobile';
 import {
     ArrowRight,
@@ -274,105 +271,15 @@ const TimeBoxing = ({ onBack, user, db }) => {
         if (selectedTaskId === taskId) setSelectedTaskId(null);
     };
 
-    const toggleComplete = async (taskId) => {
+    const toggleComplete = (taskId) => {
         const item = scheduledItems[taskId];
         if (!item) return;
-
-        // If already completed, just toggle off (visual only)
-        if (item.completed) {
-            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: false } };
-            setScheduledItems(newItems);
-            savePlanToFirebase(newItems);
-            return;
-        }
-
-        // --- Completing ---
-        if (item.type === 'lecture') {
-            // Update lecture stage in Firebase
-            const lectureData = lectures[taskId];
-            if (lectureData) {
-                const INTERVALS = [1, 2, 4, 7];
-                const currentStage = lectureData.stage || 0;
-                const nextStage = currentStage + 1;
-                const isFullyCompleted = nextStage > INTERVALS.length;
-                const nextReviewDate = isFullyCompleted
-                    ? null
-                    : (() => {
-                        const d = new Date();
-                        d.setDate(d.getDate() + INTERVALS[currentStage]);
-                        return d.toISOString().split('T')[0];
-                    })();
-
-                try {
-                    await updateDoc(
-                        doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', taskId),
-                        {
-                            stage: nextStage,
-                            nextReview: nextReviewDate,
-                            isCompleted: isFullyCompleted
-                        }
-                    );
-                } catch (e) {
-                    // Lecture might not exist yet in DB (stage 0 = not saved)
-                    await setDoc(
-                        doc(db, 'artifacts', appId, 'users', user.uid, 'lectures', taskId),
-                        {
-                            id: taskId,
-                            subject: taskId.split('_')[0],
-                            number: parseInt(taskId.split('_')[1]) || 1,
-                            stage: nextStage,
-                            nextReview: nextReviewDate,
-                            isCompleted: isFullyCompleted,
-                            title: lectureData.title || '',
-                            description: lectureData.description || '',
-                            difficulty: lectureData.difficulty || 'normal'
-                        },
-                        { merge: true }
-                    );
-                }
-
-                await logAchievement(db, user.uid, 'study', {
-                    title: lectureData.title || `Lec ${lectureData.number}`,
-                    subject: lectureData.subject,
-                    number: lectureData.number,
-                    stage: 'TimeBoxing'
-                });
-            }
-
-            // Mark as completed in daily plan
-            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
-            setScheduledItems(newItems);
-            savePlanToFirebase(newItems);
-
-        } else {
-            // Task
-            const taskData = tasks.find(t => t.id === taskId);
-            if (!taskData) return;
-
-            // Log achievement
-            await logAchievement(db, user.uid, 'task', {
-                title: taskData.title,
-                stage: taskData.stage || 'TimeBoxing'
-            });
-
-            if (taskData.isRecurring) {
-                // Recurring: just mark completed in daily plan, keep in pool
-                const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
-                setScheduledItems(newItems);
-                savePlanToFirebase(newItems);
-            } else {
-                // Non-recurring: mark completed in daily plan AND delete from tasks collection
-                const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
-                setScheduledItems(newItems);
-                savePlanToFirebase(newItems);
-                // Delete from tasks collection
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId));
-                } catch (e) {
-                    console.error('Failed to delete task:', e);
-                }
-            }
-        }
+        // Visual-only toggle: just marks the item as completed/uncompleted on the timeline
+        // No Firebase side effects (no task deletion, no lecture stage change, no achievement logging)
+        // Real completion should be done from LifeTrack (tasks) or MediTrack (lectures)
+        const newItems = { ...scheduledItems, [taskId]: { ...item, completed: !item.completed } };
+        setScheduledItems(newItems);
+        savePlanToFirebase(newItems);
     };
 
     const changeDuration = (taskId, delta) => {
