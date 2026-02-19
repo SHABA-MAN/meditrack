@@ -94,6 +94,13 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState(null);
 
+    // Live clock - ticks every second
+    const [now, setNow] = useState(() => new Date());
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     const svgRef = useRef(null);
 
     // ---- Helpers ----
@@ -312,7 +319,6 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const unscheduledLectures = lectureList.filter(l => !scheduledTaskIds.has(l.id));
     const currentList = sidebarMode === 'tasks' ? unscheduledTasks : unscheduledLectures;
 
-    const now = new Date();
     const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
     const totalScheduled = Object.keys(scheduledItems).length;
     const completedCount = Object.values(scheduledItems).filter(i => i.completed).length;
