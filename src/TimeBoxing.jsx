@@ -10,6 +10,7 @@ import {
 import { appId } from './firebase';
 import toast from 'react-hot-toast';
 import { useIsMobile } from './hooks/useIsMobile';
+import { exportScheduleToCalendar } from './utils/calendar';
 import {
     ArrowRight,
     Clock,
@@ -24,7 +25,9 @@ import {
     BookOpen,
     PanelRightClose,
     PanelRightOpen,
-    Trash2
+    Trash2,
+    Calendar,
+    Download
 } from 'lucide-react';
 
 // ---- SVG Geometry Helpers ----
@@ -636,6 +639,29 @@ const TimeBoxing = ({ onBack, user, db }) => {
                             <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-none">{totalScheduled} مجدول</span>
                             <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-none">{completedCount} منجز</span>
                         </div>
+                        {totalScheduled > 0 && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        const items = Object.entries(scheduledItems).map(([id, item]) => {
+                                            const data = findItemData(id, item.type);
+                                            return {
+                                                title: data?.title || 'MediTrack Task',
+                                                description: data?.description || '',
+                                                startHour: item.startHour,
+                                                duration: item.duration,
+                                            };
+                                        });
+                                        exportScheduleToCalendar(items, new Date(selectedDate + 'T00:00:00'), 'ics');
+                                        toast.success('تم تصدير الجدول! 📅');
+                                    }}
+                                    className="p-1.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition"
+                                    title="تصدير للتقويم"
+                                >
+                                    <Calendar size={16} />
+                                </button>
+                            </div>
+                        )}
                         <button onClick={() => setSidebarOpen(!sidebarOpen)}
                             className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition"
                             title={sidebarOpen ? 'إخفاء القائمة' : 'إظهار القائمة'}>

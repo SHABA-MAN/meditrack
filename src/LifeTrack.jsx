@@ -3,6 +3,7 @@ import { logAchievement } from './utils/achievements';
 import { useIsMobile } from './hooks/useIsMobile';
 import { appId } from './firebase';
 import toast from 'react-hot-toast';
+import useAppStore from './stores/useAppStore';
 import {
   collection,
   doc,
@@ -93,6 +94,9 @@ const renderTextWithLinks = (text) => {
 
 const LifeTrack = ({ onBack, user, db }) => {
   // Use centralized appId from firebase.js
+
+  // Zustand Store
+  const { openVideoPlayer, videoProgress } = useAppStore();
 
   // Core State
   // const [user, setUser] = useState(null); // REMOVED LOCAL USER STATE
@@ -976,37 +980,40 @@ const LifeTrack = ({ onBack, user, db }) => {
     >
       {/* 🖼️ THUMBNAIL / VIDEO 🖼️ */}
       {(task.videoId || task.playlistId) ? (
-        <div className={`w-full aspect-video relative group/video bg-slate-950 ${isFocusMode ? 'border-b border-slate-800' : ''}`}>
-          {isFocusMode ? (
-            <iframe
-              src={task.playlistId
-                ? `https://www.youtube.com/embed/videoseries?list=${task.playlistId}`
-                : `https://www.youtube.com/embed/${task.videoId}`
-              }
-              className="w-full h-full"
-              allowFullScreen
-              title={task.title}
-            />
+        <div
+          className={`w-full aspect-video relative group/video bg-slate-950 cursor-pointer ${isFocusMode ? 'border-b border-slate-800' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            openVideoPlayer({
+              videoId: task.videoId,
+              playlistId: task.playlistId,
+              title: task.title,
+              taskId: task.id
+            });
+          }}
+        >
+          {task.playlistId ? (
+            <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 flex-col gap-2">
+              <Layers size={32} />
+              <span className="text-xs font-bold uppercase tracking-widest">Playlist</span>
+            </div>
           ) : (
-            <>
-              {task.playlistId ? (
-                <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 flex-col gap-2">
-                  <Layers size={32} />
-                  <span className="text-xs font-bold uppercase tracking-widest">Playlist</span>
-                </div>
-              ) : (
-                <img
-                  src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`}
-                  className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition"
-                  alt="thumbnail"
-                />
-              )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
-                <div className="w-10 h-10 bg-red-600 text-white rounded-none flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
-                  <Play size={16} fill="white" />
-                </div>
-              </div>
-            </>
+            <img
+              src={`https://img.youtube.com/vi/${task.videoId}/mqdefault.jpg`}
+              className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition"
+              alt="thumbnail"
+            />
+          )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/video:bg-black/10 transition">
+            <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform group-hover/card:scale-110 transition">
+              <Play size={16} fill="white" />
+            </div>
+          </div>
+          {/* Progress overlay */}
+          {videoProgress[task.videoId]?.percent > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800">
+              <div className="h-full bg-red-500 transition-all" style={{ width: `${videoProgress[task.videoId].percent}%` }} />
+            </div>
           )}
         </div>
       ) : task.soundCloudUrl ? (
