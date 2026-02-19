@@ -1010,9 +1010,9 @@ const LifeTrack = ({ onBack, user, db }) => {
             </div>
           </div>
           {/* Progress overlay */}
-          {videoProgress[task.videoId]?.percent > 0 && (
+          {videoProgress[task.videoId || task.playlistId]?.percent > 0 && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800">
-              <div className="h-full bg-red-500 transition-all" style={{ width: `${videoProgress[task.videoId].percent}%` }} />
+              <div className="h-full bg-red-500 transition-all" style={{ width: `${videoProgress[task.videoId || task.playlistId].percent}%` }} />
             </div>
           )}
         </div>

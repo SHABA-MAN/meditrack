@@ -55,30 +55,40 @@ const YouTubePlayer = () => {
             try { playerRef.current.destroy(); } catch (e) { /* ignore */ }
         }
 
-        const videoConfig = activeVideo.playlistId
-            ? { list: activeVideo.playlistId, listType: 'playlist' }
-            : { videoId: activeVideo.videoId };
+        // Build player config
+        // For playlists: videoId is omitted, list + listType go in playerVars
+        // For single videos: videoId goes in root config
+        const isPlaylist = !!activeVideo.playlistId;
+        const rootConfig = isPlaylist ? {} : { videoId: activeVideo.videoId };
+        const progressKey = activeVideo.videoId || activeVideo.playlistId;
+
+        const playerVarsConfig = {
+            autoplay: 1,
+            modestbranding: 1,
+            rel: 0,
+            ...(isPlaylist
+                ? { list: activeVideo.playlistId, listType: 'playlist' }
+                : { start: activeVideo.startAt || 0 }
+            ),
+        };
 
         playerRef.current = new window.YT.Player('yt-player-iframe', {
             height: '100%',
             width: '100%',
-            ...videoConfig,
-            playerVars: {
-                autoplay: 1,
-                modestbranding: 1,
-                rel: 0,
-                start: activeVideo.startAt || 0,
-            },
+            ...rootConfig,
+            playerVars: playerVarsConfig,
             events: {
                 onReady: (event) => {
                     setIsReady(true);
                     setDuration(event.target.getDuration());
                     setIsPlaying(true);
 
-                    // Restore position
-                    const saved = videoProgress[activeVideo.videoId];
-                    if (saved?.currentTime > 10) {
-                        event.target.seekTo(saved.currentTime, true);
+                    // Restore position (single video only)
+                    if (!isPlaylist && progressKey) {
+                        const saved = videoProgress[progressKey];
+                        if (saved?.currentTime > 10) {
+                            event.target.seekTo(saved.currentTime, true);
+                        }
                     }
                 },
                 onStateChange: (event) => {
@@ -99,8 +109,8 @@ const YouTubePlayer = () => {
                 setCurrentTime(time);
                 setDuration(dur);
 
-                if (activeVideo?.videoId && dur > 0) {
-                    updateVideoProgress(activeVideo.videoId, {
+                if (progressKey && dur > 0) {
+                    updateVideoProgress(progressKey, {
                         currentTime: time,
                         duration: dur,
                         percent: Math.round((time / dur) * 100)
@@ -154,9 +164,11 @@ const YouTubePlayer = () => {
         return (
             <div className="fixed bottom-4 right-4 z-[100] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-72 overflow-hidden">
                 <div className="flex items-center gap-2 p-2">
-                    <div className="w-12 h-8 bg-slate-800 rounded overflow-hidden flex-shrink-0">
-                        {activeVideo.videoId && (
+                    <div className="w-12 h-8 bg-slate-800 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        {activeVideo.videoId ? (
                             <img src={`https://img.youtube.com/vi/${activeVideo.videoId}/default.jpg`} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                            <Play size={12} className="text-slate-500" />
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
