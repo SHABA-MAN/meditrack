@@ -128,11 +128,13 @@ const TimeBoxing = ({ onBack, user, db }) => {
         setSelectedDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
     };
 
-    const formatHour = (hour) => {
-        if (hour === 0) return '12 AM';
-        if (hour < 12) return `${hour} AM`;
-        if (hour === 12) return '12 PM';
-        return `${hour - 12} PM`;
+    const formatHour = (hourDecimal) => {
+        let hour = Math.floor(hourDecimal);
+        let mins = Math.round((hourDecimal - hour) * 60);
+        if (mins === 60) { hour += 1; mins = 0; }
+        const period = (hour % 24) < 12 ? 'AM' : 'PM';
+        hour = hour % 12 || 12; // 0 becomes 12, 13 becomes 1
+        return `${hour}:${String(mins).padStart(2, '0')} ${period}`;
     };
 
     // ---- Firebase: Load Tasks ----
@@ -233,31 +235,46 @@ const TimeBoxing = ({ onBack, user, db }) => {
         e.dataTransfer.effectAllowed = 'move';
     };
 
-    const handleSliceDragOver = (e, hour) => {
+    const getHourFromEvent = (e) => {
+        if (!svgRef.current) return 0;
+        const rect = svgRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const svgX = (x / rect.width) * 600;
+        const svgY = (y / rect.height) * 600;
+        let deg = Math.atan2(svgY - CY, svgX - CX) * (180 / Math.PI);
+        deg += 90;
+        if (deg < 0) deg += 360;
+        let hour = deg / 15;
+        // Snap to nearest 5 minutes (1/12 hour)
+        hour = Math.round(hour * 12) / 12;
+        if (hour >= 24) hour = 0;
+        return hour;
+    };
+
+    const handleSvgDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        setDragOverHour(hour);
+        setDragOverHour(getHourFromEvent(e));
     };
 
     const handleSliceDragLeave = () => {
         setDragOverHour(null);
     };
 
-    const handleSliceDrop = (e, hour) => {
+    const handleSvgDrop = (e) => {
         e.preventDefault();
         setDragOverHour(null);
+        const hour = getHourFromEvent(e);
         const taskId = e.dataTransfer.getData('taskId');
         const source = e.dataTransfer.getData('source');
         const itemType = e.dataTransfer.getData('itemType') || 'task';
-        if (!taskId) return;
-        // Validate hour range
-        if (hour < 0 || hour > 23) return;
+        if (!taskId || hour < 0 || hour >= 24) return;
 
         const newItems = { ...scheduledItems };
         if (source === 'scheduled') {
             const existing = newItems[taskId];
             if (existing) {
-                // Clamp duration so it doesn't overflow past 24
                 const maxDuration = 24 - hour;
                 newItems[taskId] = { ...existing, startHour: hour, duration: Math.min(existing.duration, maxDuration) };
             }
@@ -299,7 +316,7 @@ const TimeBoxing = ({ onBack, user, db }) => {
         if (!item) return;
         const maxAllowed = 24 - item.startHour;
         if (maxAllowed <= 0) return; // startHour is already 24 (shouldn't happen)
-        const newDuration = Math.max(0.5, Math.min(item.duration + delta, maxAllowed));
+        const newDuration = Math.max(0.25, Math.min(item.duration + delta, maxAllowed));
         if (newDuration === item.duration) return; // No change
         const newItems = { ...scheduledItems, [taskId]: { ...item, duration: newDuration } };
         setScheduledItems(newItems);
@@ -401,64 +418,81 @@ const TimeBoxing = ({ onBack, user, db }) => {
                 viewBox="0 0 600 600"
                 className="w-full max-w-[600px] mx-auto select-none"
                 style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' }}
+                onDragOver={handleSvgDragOver}
+                onDragLeave={handleSliceDragLeave}
+                onDrop={handleSvgDrop}
             >
                 {/* Background circle */}
                 <circle cx={CX} cy={CY} r={CLOCK_R} fill="#f8fafc" stroke="#e2e8f0" strokeWidth="2" />
                 <circle cx={CX} cy={CY} r={INNER_R} fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
 
-                {/* Hour grid lines + labels */}
-                {Array.from({ length: 24 }, (_, h) => {
-                    const angle = hourToAngle(h);
-                    const outerPt = polarToXY(CX, CY, CLOCK_R, angle);
-                    const innerPt = polarToXY(CX, CY, INNER_R, angle);
-                    const labelPt = polarToXY(CX, CY, LABEL_R, angle);
+                {/* Hour grid lines + labels and minutes ticks */}
+                {Array.from({ length: 96 }, (_, i) => {
+                    const isHour = i % 4 === 0;
+                    const angle = (i / 96) * 360;
+                    const h = i / 4;
                     const isMajor = h % 3 === 0;
 
-                    return (
-                        <g key={`label-${h}`}>
-                            <line
-                                x1={innerPt.x} y1={innerPt.y}
-                                x2={outerPt.x} y2={outerPt.y}
-                                stroke={isMajor ? '#cbd5e1' : '#e2e8f0'}
-                                strokeWidth={isMajor ? 1.5 : 0.5}
-                            />
-                            {isMajor && (
+                    if (isHour) {
+                        const outerPt = polarToXY(CX, CY, CLOCK_R, angle);
+                        const innerPt = polarToXY(CX, CY, INNER_R, angle);
+                        const labelPt = polarToXY(CX, CY, LABEL_R, angle);
+                        return (
+                            <g key={`label-${h}`}>
+                                <line
+                                    x1={innerPt.x} y1={innerPt.y}
+                                    x2={outerPt.x} y2={outerPt.y}
+                                    stroke={isMajor ? '#cbd5e1' : '#e2e8f0'}
+                                    strokeWidth={isMajor ? 1.5 : 0.5}
+                                />
                                 <text
                                     x={labelPt.x} y={labelPt.y}
                                     textAnchor="middle" dominantBaseline="central"
-                                    fontSize="11" fontWeight="700" fill="#64748b"
+                                    fontSize={isMajor ? "12" : "10"}
+                                    fontWeight={isMajor ? "800" : "600"}
+                                    fill={isMajor ? "#475569" : "#94a3b8"}
+                                    style={{ pointerEvents: 'none' }}
                                 >
                                     {h === 0 ? '0' : h}
                                 </text>
-                            )}
-                        </g>
-                    );
+                            </g>
+                        );
+                    } else {
+                        const isHalf = i % 2 === 0;
+                        const outerPt = polarToXY(CX, CY, CLOCK_R, angle);
+                        const innerTickPt = polarToXY(CX, CY, isHalf ? CLOCK_R - 10 : CLOCK_R - 5, angle);
+                        return (
+                            <line
+                                key={`tick-${i}`}
+                                x1={innerTickPt.x} y1={innerTickPt.y}
+                                x2={outerPt.x} y2={outerPt.y}
+                                stroke={'#e2e8f0'}
+                                strokeWidth={0.5}
+                            />
+                        );
+                    }
                 })}
 
-                {/* Drop zone slices (invisible, but interactive) */}
-                {Array.from({ length: 24 }, (_, h) => {
-                    const startA = hourToAngle(h);
-                    const endA = hourToAngle(h + 1);
-                    const d = describeArc(CX, CY, CLOCK_R, INNER_R, startA, endA);
-                    const isOver = dragOverHour === h;
-
-                    return (
+                {/* Drop zone preview */}
+                {dragOverHour !== null && (
+                    <g pointerEvents="none">
                         <path
-                            key={`drop-${h}`}
-                            d={d}
-                            fill={isOver ? 'rgba(99,102,241,0.2)' : 'transparent'}
-                            stroke={isOver ? '#6366f1' : 'none'}
-                            strokeWidth={isOver ? 2 : 0}
-                            style={{ cursor: 'pointer' }}
-                            onDragOver={(e) => handleSliceDragOver(e, h)}
-                            onDragLeave={handleSliceDragLeave}
-                            onDrop={(e) => handleSliceDrop(e, h)}
-                            onClick={() => {
-                                // If a task is dragging or nothing, do nothing on empty click
-                            }}
+                            d={describeArc(CX, CY, CLOCK_R, INNER_R, hourToAngle(dragOverHour), hourToAngle(dragOverHour + 1))}
+                            fill="rgba(99,102,241,0.2)"
+                            stroke="#6366f1"
+                            strokeWidth="2"
                         />
-                    );
-                })}
+                        <text
+                            x={polarToXY(CX, CY, (CLOCK_R + INNER_R) / 2, hourToAngle(dragOverHour + 0.5)).x}
+                            y={polarToXY(CX, CY, (CLOCK_R + INNER_R) / 2, hourToAngle(dragOverHour + 0.5)).y}
+                            textAnchor="middle" dominantBaseline="central"
+                            fontSize="14" fontWeight="800" fill="#4f46e5"
+                            style={{ textShadow: '0 0 4px white' }}
+                        >
+                            {Math.floor(dragOverHour)}:{String(Math.round((dragOverHour % 1) * 60)).padStart(2, '0')}
+                        </text>
+                    </g>
+                )}
 
                 {/* Scheduled task arcs */}
                 {Object.entries(scheduledItems).map(([taskId, item]) => {
@@ -485,6 +519,7 @@ const TimeBoxing = ({ onBack, user, db }) => {
                             onClick={() => setSelectedTaskId(isSelected ? null : taskId)}
                             style={{ cursor: 'grab' }}
                         >
+                            <title>{data.title || 'مهمة'}</title>
                             <path
                                 d={arcD}
                                 fill={color}
@@ -587,10 +622,10 @@ const TimeBoxing = ({ onBack, user, db }) => {
                             {/* Actions */}
                             <div className="flex items-center gap-0.5 flex-shrink-0">
                                 {/* Duration controls */}
-                                <button onClick={(e) => { e.stopPropagation(); changeDuration(taskId, -0.5); }}
+                                <button onClick={(e) => { e.stopPropagation(); changeDuration(taskId, -0.25); }}
                                     className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-none text-xs font-bold transition">−</button>
                                 <span className="text-[9px] font-bold text-slate-500 w-5 text-center">{item.duration}h</span>
-                                <button onClick={(e) => { e.stopPropagation(); changeDuration(taskId, 0.5); }}
+                                <button onClick={(e) => { e.stopPropagation(); changeDuration(taskId, 0.25); }}
                                     className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-none text-xs font-bold transition">+</button>
 
                                 <button onClick={(e) => { e.stopPropagation(); toggleComplete(taskId); }}

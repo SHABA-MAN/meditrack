@@ -126,11 +126,16 @@ export const downloadICSFile = (events, filename = 'meditrack-schedule.ics') => 
 export const timeBoxingToCalendarEvents = (scheduledItems, date) => {
     return scheduledItems.map(item => {
         const startDate = new Date(date);
-        startDate.setHours(item.startHour, (item.startMinute || 0), 0, 0);
+        const startHourInt = Math.floor(item.startHour);
+        const startMins = Math.round((item.startHour - startHourInt) * 60);
+        startDate.setHours(startHourInt, startMins, 0, 0);
 
         const endDate = new Date(date);
         const durationHours = item.duration || 1;
-        endDate.setHours(item.startHour + Math.floor(durationHours), ((item.startMinute || 0) + (durationHours % 1) * 60), 0, 0);
+        const endDecimal = item.startHour + durationHours;
+        const endHourInt = Math.floor(endDecimal);
+        const endMins = Math.round((endDecimal - endHourInt) * 60);
+        endDate.setHours(endHourInt, endMins, 0, 0);
 
         return {
             title: item.title || item.label || 'مهمة',
