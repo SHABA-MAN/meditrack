@@ -3,14 +3,18 @@ import {
     collection,
     doc,
     setDoc,
+    deleteDoc,
     onSnapshot,
     query,
     orderBy
 } from 'firebase/firestore';
-import { appId } from './firebase';
+import { appId, db } from './firebase';
 import toast from 'react-hot-toast';
 import { useIsMobile } from './hooks/useIsMobile';
 import { exportScheduleToCalendar } from './utils/calendar';
+import { logAchievement } from './utils/achievements';
+import { completeLecture } from './services/lectureService';
+import { DEFAULT_SUBJECTS, DIFFICULTY_CONFIG } from './constants';
 import {
     ArrowRight,
     Clock,
@@ -300,15 +304,49 @@ const TimeBoxing = ({ onBack, user, db }) => {
         if (selectedTaskId === taskId) setSelectedTaskId(null);
     };
 
-    const toggleComplete = (taskId) => {
+    const toggleComplete = async (taskId) => {
         const item = scheduledItems[taskId];
-        if (!item) return;
-        // Visual-only toggle: just marks the item as completed/uncompleted on the timeline
-        // No Firebase side effects (no task deletion, no lecture stage change, no achievement logging)
-        // Real completion should be done from LifeTrack (tasks) or MediTrack (lectures)
-        const newItems = { ...scheduledItems, [taskId]: { ...item, completed: !item.completed } };
-        setScheduledItems(newItems);
-        savePlanToFirebase(newItems);
+        if (!item || !user) return;
+
+        if (item.completed) {
+            // Already completed, just undo visually
+            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: false } };
+            setScheduledItems(newItems);
+            savePlanToFirebase(newItems);
+            return;
+        }
+
+        if (!confirm("هل أنت متأكد من إتمام هذا الهدف نهائياً؟ سيتم تسجيله ورفعه من القائمة الرئيسية.")) {
+            return;
+        }
+
+        try {
+            const data = findItemData(taskId, item.type);
+            if (!data) return;
+
+            if (item.type === 'lecture') {
+                await completeLecture(db, user.uid, data);
+                toast.success(`أحسنت! تم إنجاز ${data.subject} Lec ${data.number} ✅`);
+            } else {
+                if (data.isRecurring) {
+                    await logAchievement(db, user.uid, 'task', { title: data.title, stage: data.stage });
+                    toast.success("تم تسجيل الإنجاز للمهمة المستمرة ✅");
+                } else {
+                    await logAchievement(db, user.uid, 'task', { title: data.title, stage: data.stage });
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId));
+                    toast.success("أحسنت! تم إنجاز المهمة وحذفها ✅");
+                }
+            }
+
+            // Visual toggle (keep it on schedule but mark completed)
+            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
+            setScheduledItems(newItems);
+            savePlanToFirebase(newItems);
+
+        } catch (error) {
+            console.error("Completion error:", error);
+            toast.error("حدث خطأ أثناء الحفظ.");
+        }
     };
 
     const changeDuration = (taskId, delta) => {
@@ -613,10 +651,41 @@ const TimeBoxing = ({ onBack, user, db }) => {
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
-                                    {title}
-                                </p>
-                                <p className="text-[9px] text-slate-400">{formatHour(item.startHour)} — {formatHour(item.startHour + item.duration)} ({item.duration}h)</p>
+                                {isLecture ? (
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none text-white ${subjects[data.subject]?.badge || 'bg-slate-400'}`}>
+                                                {data.subject}
+                                            </span>
+                                            <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
+                                                Lec {data.number}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 items-center text-[9px]">
+                                            <span className="text-slate-500 font-bold">{subjects[data.subject]?.name}</span>
+                                            {data.title && <><span className="text-slate-300">•</span><span className="text-slate-500 truncate max-w-[120px]">{data.title}</span></>}
+                                            {data.difficulty && DIFFICULTY_CONFIG[data.difficulty] && (
+                                                <>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[data.difficulty].bg} ${DIFFICULTY_CONFIG[data.difficulty].text} ${DIFFICULTY_CONFIG[data.difficulty].border} border`}>
+                                                        {DIFFICULTY_CONFIG[data.difficulty].emoji}
+                                                    </span>
+                                                </>
+                                            )}
+                                            {data.stage > 0 && (
+                                                <>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-slate-400">تكرار {data.stage}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
+                                        {title}
+                                    </p>
+                                )}
+                                <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{formatHour(item.startHour)} — {formatHour(item.startHour + item.duration)} ({item.duration}h)</p>
                             </div>
 
                             {/* Actions */}
@@ -769,12 +838,20 @@ const TimeBoxing = ({ onBack, user, db }) => {
                                                 <div className={`w-7 h-7 rounded-none flex items-center justify-center text-[9px] font-black text-white flex-shrink-0 ${subj?.badge || 'bg-blue-600'}`}>{item.subject}</div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-bold text-slate-700 text-xs truncate">{item.title || `Lecture ${item.number}`}</p>
-                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                        <span className="text-[9px] text-blue-600 font-bold">{subj?.name || item.subject}</span>
-                                                        <span className="text-slate-300 text-[8px]">•</span>
-                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-200">
+                                                    <div className="flex flex-wrap items-center gap-1 mt-1 text-[9px]">
+                                                        <span className="text-blue-600 font-bold">{subj?.name || item.subject}</span>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className="font-bold px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-200">
                                                             {item.stage > 0 ? `تكرار ${item.stage}` : 'جديدة'}
                                                         </span>
+                                                        {item.difficulty && DIFFICULTY_CONFIG[item.difficulty] && (
+                                                            <>
+                                                                <span className="text-slate-300">•</span>
+                                                                <span className={`px-1.5 py-0.5 rounded-none font-bold ${DIFFICULTY_CONFIG[item.difficulty].bg} ${DIFFICULTY_CONFIG[item.difficulty].text} ${DIFFICULTY_CONFIG[item.difficulty].border} border`}>
+                                                                    {DIFFICULTY_CONFIG[item.difficulty].emoji}
+                                                                </span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <GripVertical size={14} className="text-slate-200 group-hover:text-slate-400 transition flex-shrink-0 mt-1" />
