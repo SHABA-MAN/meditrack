@@ -27,6 +27,7 @@ import {
     Inbox,
     Target,
     BookOpen,
+    RefreshCw,
     PanelRightClose,
     PanelRightOpen,
     Trash2,
@@ -372,7 +373,14 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const lectureList = getLectureList();
     const unscheduledTasks = tasks.filter(t => !scheduledTaskIds.has(t.id));
     const unscheduledLectures = lectureList.filter(l => !scheduledTaskIds.has(l.id));
-    const currentList = sidebarMode === 'tasks' ? unscheduledTasks : unscheduledLectures;
+    
+    // Split lectures by stage
+    const unscheduledNewLectures = unscheduledLectures.filter(l => l.stage === 0);
+    const unscheduledReviewLectures = unscheduledLectures.filter(l => l.stage > 0);
+
+    let currentList = unscheduledTasks;
+    if (sidebarMode === 'new_lectures') currentList = unscheduledNewLectures;
+    else if (sidebarMode === 'review_lectures') currentList = unscheduledReviewLectures;
 
     const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
     const totalScheduled = Object.keys(scheduledItems).length;
@@ -791,11 +799,9 @@ const TimeBoxing = ({ onBack, user, db }) => {
                             <div className="relative sidebar-dropdown">
                                 <button onClick={() => setDropdownOpen(!dropdownOpen)}
                                     className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-none hover:border-indigo-300 transition text-sm font-bold text-slate-700">
-                                    {sidebarMode === 'tasks' ? (
-                                        <><Target size={14} className="text-indigo-500" /> الأهداف العادية</>
-                                    ) : (
-                                        <><BookOpen size={14} className="text-blue-500" /> أهداف المحاضرات</>
-                                    )}
+                                    {sidebarMode === 'tasks' && <><Target size={14} className="text-indigo-500" /> الأهداف العادية</>}
+                                    {sidebarMode === 'new_lectures' && <><BookOpen size={14} className="text-blue-500" /> محاضرات جديدة</>}
+                                    {sidebarMode === 'review_lectures' && <><RefreshCw size={14} className="text-emerald-500" /> مراجعات</>}
                                     <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
                                 {dropdownOpen && (
@@ -805,10 +811,16 @@ const TimeBoxing = ({ onBack, user, db }) => {
                                             <Target size={14} /> الأهداف العادية
                                             <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledTasks.length}</span>
                                         </button>
-                                        <button onClick={() => { setSidebarMode('lectures'); setDropdownOpen(false); }}
-                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition border-t border-slate-100 ${sidebarMode === 'lectures' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-gray-50'}`}>
-                                            <BookOpen size={14} /> أهداف المحاضرات
-                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledLectures.length}</span>
+                                        <div className="border-t border-slate-100 my-1"></div>
+                                        <button onClick={() => { setSidebarMode('new_lectures'); setDropdownOpen(false); }}
+                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition ${sidebarMode === 'new_lectures' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-gray-50'}`}>
+                                            <BookOpen size={14} /> محاضرات جديدة
+                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledNewLectures.length}</span>
+                                        </button>
+                                        <button onClick={() => { setSidebarMode('review_lectures'); setDropdownOpen(false); }}
+                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition ${sidebarMode === 'review_lectures' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-gray-50'}`}>
+                                            <RefreshCw size={14} /> مراجعات
+                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledReviewLectures.length}</span>
                                         </button>
                                     </div>
                                 )}
@@ -824,11 +836,15 @@ const TimeBoxing = ({ onBack, user, db }) => {
                         {currentList.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-center p-4 text-slate-300">
                                 <Inbox size={32} className="mb-3 opacity-50" />
-                                <p className="text-xs font-medium">{sidebarMode === 'tasks' ? 'كل الأهداف مجدولة!' : 'كل المحاضرات مجدولة!'}</p>
+                                <p className="text-xs font-medium">
+                                    {sidebarMode === 'tasks' && 'كل الأهداف مجدولة!'}
+                                    {sidebarMode === 'new_lectures' && 'كل المحاضرات الجديدة مجدولة!'}
+                                    {sidebarMode === 'review_lectures' && 'كل المراجعات مجدولة!'}
+                                </p>
                             </div>
                         ) : (
                             currentList.map(item => {
-                                const isLecture = sidebarMode === 'lectures';
+                                const isLecture = sidebarMode.includes('lectures');
                                 if (isLecture) {
                                     const subj = subjects[item.subject];
                                     return (
