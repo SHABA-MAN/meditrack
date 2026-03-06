@@ -3,18 +3,14 @@ import {
     collection,
     doc,
     setDoc,
-    deleteDoc,
     onSnapshot,
     query,
     orderBy
 } from 'firebase/firestore';
-import { appId, db } from './firebase';
+import { appId } from './firebase';
 import toast from 'react-hot-toast';
 import { useIsMobile } from './hooks/useIsMobile';
 import { exportScheduleToCalendar } from './utils/calendar';
-import { logAchievement } from './utils/achievements';
-import { completeLecture } from './services/lectureService';
-import { DEFAULT_SUBJECTS, DIFFICULTY_CONFIG } from './constants';
 import {
     ArrowRight,
     Clock,
@@ -27,7 +23,6 @@ import {
     Inbox,
     Target,
     BookOpen,
-    RefreshCw,
     PanelRightClose,
     PanelRightOpen,
     Trash2,
@@ -305,49 +300,15 @@ const TimeBoxing = ({ onBack, user, db }) => {
         if (selectedTaskId === taskId) setSelectedTaskId(null);
     };
 
-    const toggleComplete = async (taskId) => {
+    const toggleComplete = (taskId) => {
         const item = scheduledItems[taskId];
-        if (!item || !user) return;
-
-        if (item.completed) {
-            // Already completed, just undo visually
-            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: false } };
-            setScheduledItems(newItems);
-            savePlanToFirebase(newItems);
-            return;
-        }
-
-        if (!confirm("هل أنت متأكد من إتمام هذا الهدف نهائياً؟ سيتم تسجيله ورفعه من القائمة الرئيسية.")) {
-            return;
-        }
-
-        try {
-            const data = findItemData(taskId, item.type);
-            if (!data) return;
-
-            if (item.type === 'lecture') {
-                await completeLecture(db, user.uid, data);
-                toast.success(`أحسنت! تم إنجاز ${data.subject} Lec ${data.number} ✅`);
-            } else {
-                if (data.isRecurring) {
-                    await logAchievement(db, user.uid, 'task', { title: data.title, stage: data.stage });
-                    toast.success("تم تسجيل الإنجاز للمهمة المستمرة ✅");
-                } else {
-                    await logAchievement(db, user.uid, 'task', { title: data.title, stage: data.stage });
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId));
-                    toast.success("أحسنت! تم إنجاز المهمة وحذفها ✅");
-                }
-            }
-
-            // Visual toggle (keep it on schedule but mark completed)
-            const newItems = { ...scheduledItems, [taskId]: { ...item, completed: true } };
-            setScheduledItems(newItems);
-            savePlanToFirebase(newItems);
-
-        } catch (error) {
-            console.error("Completion error:", error);
-            toast.error("حدث خطأ أثناء الحفظ.");
-        }
+        if (!item) return;
+        // Visual-only toggle: just marks the item as completed/uncompleted on the timeline
+        // No Firebase side effects (no task deletion, no lecture stage change, no achievement logging)
+        // Real completion should be done from LifeTrack (tasks) or MediTrack (lectures)
+        const newItems = { ...scheduledItems, [taskId]: { ...item, completed: !item.completed } };
+        setScheduledItems(newItems);
+        savePlanToFirebase(newItems);
     };
 
     const changeDuration = (taskId, delta) => {
@@ -373,14 +334,7 @@ const TimeBoxing = ({ onBack, user, db }) => {
     const lectureList = getLectureList();
     const unscheduledTasks = tasks.filter(t => !scheduledTaskIds.has(t.id));
     const unscheduledLectures = lectureList.filter(l => !scheduledTaskIds.has(l.id));
-    
-    // Split lectures by stage
-    const unscheduledNewLectures = unscheduledLectures.filter(l => l.stage === 0);
-    const unscheduledReviewLectures = unscheduledLectures.filter(l => l.stage > 0);
-
-    let currentList = unscheduledTasks;
-    if (sidebarMode === 'new_lectures') currentList = unscheduledNewLectures;
-    else if (sidebarMode === 'review_lectures') currentList = unscheduledReviewLectures;
+    const currentList = sidebarMode === 'tasks' ? unscheduledTasks : unscheduledLectures;
 
     const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
     const totalScheduled = Object.keys(scheduledItems).length;
@@ -659,41 +613,10 @@ const TimeBoxing = ({ onBack, user, db }) => {
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                                {isLecture ? (
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-none text-white ${subjects[data.subject]?.badge || 'bg-slate-400'}`}>
-                                                {data.subject}
-                                            </span>
-                                            <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
-                                                Lec {data.number}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1 items-center text-[9px]">
-                                            <span className="text-slate-500 font-bold">{subjects[data.subject]?.name}</span>
-                                            {data.title && <><span className="text-slate-300">•</span><span className="text-slate-500 truncate max-w-[120px]">{data.title}</span></>}
-                                            {data.difficulty && DIFFICULTY_CONFIG[data.difficulty] && (
-                                                <>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[data.difficulty].bg} ${DIFFICULTY_CONFIG[data.difficulty].text} ${DIFFICULTY_CONFIG[data.difficulty].border} border`}>
-                                                        {DIFFICULTY_CONFIG[data.difficulty].emoji}
-                                                    </span>
-                                                </>
-                                            )}
-                                            {data.stage > 0 && (
-                                                <>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-slate-400">تكرار {data.stage}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
-                                        {title}
-                                    </p>
-                                )}
-                                <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{formatHour(item.startHour)} — {formatHour(item.startHour + item.duration)} ({item.duration}h)</p>
+                                <p className={`text-xs font-bold truncate ${item.completed ? 'line-through text-emerald-600' : 'text-slate-700'}`}>
+                                    {title}
+                                </p>
+                                <p className="text-[9px] text-slate-400">{formatHour(item.startHour)} — {formatHour(item.startHour + item.duration)} ({item.duration}h)</p>
                             </div>
 
                             {/* Actions */}
@@ -799,9 +722,11 @@ const TimeBoxing = ({ onBack, user, db }) => {
                             <div className="relative sidebar-dropdown">
                                 <button onClick={() => setDropdownOpen(!dropdownOpen)}
                                     className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-none hover:border-indigo-300 transition text-sm font-bold text-slate-700">
-                                    {sidebarMode === 'tasks' && <><Target size={14} className="text-indigo-500" /> الأهداف العادية</>}
-                                    {sidebarMode === 'new_lectures' && <><BookOpen size={14} className="text-blue-500" /> محاضرات جديدة</>}
-                                    {sidebarMode === 'review_lectures' && <><RefreshCw size={14} className="text-emerald-500" /> مراجعات</>}
+                                    {sidebarMode === 'tasks' ? (
+                                        <><Target size={14} className="text-indigo-500" /> الأهداف العادية</>
+                                    ) : (
+                                        <><BookOpen size={14} className="text-blue-500" /> أهداف المحاضرات</>
+                                    )}
                                     <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
                                 {dropdownOpen && (
@@ -811,16 +736,10 @@ const TimeBoxing = ({ onBack, user, db }) => {
                                             <Target size={14} /> الأهداف العادية
                                             <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledTasks.length}</span>
                                         </button>
-                                        <div className="border-t border-slate-100 my-1"></div>
-                                        <button onClick={() => { setSidebarMode('new_lectures'); setDropdownOpen(false); }}
-                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition ${sidebarMode === 'new_lectures' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-gray-50'}`}>
-                                            <BookOpen size={14} /> محاضرات جديدة
-                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledNewLectures.length}</span>
-                                        </button>
-                                        <button onClick={() => { setSidebarMode('review_lectures'); setDropdownOpen(false); }}
-                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition ${sidebarMode === 'review_lectures' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-gray-50'}`}>
-                                            <RefreshCw size={14} /> مراجعات
-                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledReviewLectures.length}</span>
+                                        <button onClick={() => { setSidebarMode('lectures'); setDropdownOpen(false); }}
+                                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold transition border-t border-slate-100 ${sidebarMode === 'lectures' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-gray-50'}`}>
+                                            <BookOpen size={14} /> أهداف المحاضرات
+                                            <span className="mr-auto bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-none">{unscheduledLectures.length}</span>
                                         </button>
                                     </div>
                                 )}
@@ -836,15 +755,11 @@ const TimeBoxing = ({ onBack, user, db }) => {
                         {currentList.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-center p-4 text-slate-300">
                                 <Inbox size={32} className="mb-3 opacity-50" />
-                                <p className="text-xs font-medium">
-                                    {sidebarMode === 'tasks' && 'كل الأهداف مجدولة!'}
-                                    {sidebarMode === 'new_lectures' && 'كل المحاضرات الجديدة مجدولة!'}
-                                    {sidebarMode === 'review_lectures' && 'كل المراجعات مجدولة!'}
-                                </p>
+                                <p className="text-xs font-medium">{sidebarMode === 'tasks' ? 'كل الأهداف مجدولة!' : 'كل المحاضرات مجدولة!'}</p>
                             </div>
                         ) : (
                             currentList.map(item => {
-                                const isLecture = sidebarMode.includes('lectures');
+                                const isLecture = sidebarMode === 'lectures';
                                 if (isLecture) {
                                     const subj = subjects[item.subject];
                                     return (
@@ -854,20 +769,12 @@ const TimeBoxing = ({ onBack, user, db }) => {
                                                 <div className={`w-7 h-7 rounded-none flex items-center justify-center text-[9px] font-black text-white flex-shrink-0 ${subj?.badge || 'bg-blue-600'}`}>{item.subject}</div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-bold text-slate-700 text-xs truncate">{item.title || `Lecture ${item.number}`}</p>
-                                                    <div className="flex flex-wrap items-center gap-1 mt-1 text-[9px]">
-                                                        <span className="text-blue-600 font-bold">{subj?.name || item.subject}</span>
-                                                        <span className="text-slate-300">•</span>
-                                                        <span className="font-bold px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-200">
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <span className="text-[9px] text-blue-600 font-bold">{subj?.name || item.subject}</span>
+                                                        <span className="text-slate-300 text-[8px]">•</span>
+                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-200">
                                                             {item.stage > 0 ? `تكرار ${item.stage}` : 'جديدة'}
                                                         </span>
-                                                        {item.difficulty && DIFFICULTY_CONFIG[item.difficulty] && (
-                                                            <>
-                                                                <span className="text-slate-300">•</span>
-                                                                <span className={`px-1.5 py-0.5 rounded-none font-bold ${DIFFICULTY_CONFIG[item.difficulty].bg} ${DIFFICULTY_CONFIG[item.difficulty].text} ${DIFFICULTY_CONFIG[item.difficulty].border} border`}>
-                                                                    {DIFFICULTY_CONFIG[item.difficulty].emoji}
-                                                                </span>
-                                                            </>
-                                                        )}
                                                     </div>
                                                 </div>
                                                 <GripVertical size={14} className="text-slate-200 group-hover:text-slate-400 transition flex-shrink-0 mt-1" />

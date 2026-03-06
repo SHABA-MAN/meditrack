@@ -2,63 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════════════════════════ */
-/*  MediTrack Pro — Dark Dashboard Design System  */
-/* ═══════════════════════════════════════════════ */
-
-:root {
-  /* Core dark palette */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #0f172a;
-  --bg-card: #1e293b;
-  --bg-card-hover: #243047;
-  --bg-card-elevated: #2a3654;
-  --border-subtle: rgba(148, 163, 184, 0.08);
-  --border-mid: rgba(148, 163, 184, 0.12);
-  --border-strong: rgba(148, 163, 184, 0.2);
-  
-  /* Accent colors */
-  --accent-blue: #3b82f6;
-  --accent-purple: #8b5cf6;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
-  --accent-cyan: #06b6d4;
-  
-  /* Text hierarchy */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-accent: #60a5fa;
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Base Styles                                    */
-/* ═══════════════════════════════════════════════ */
-
-html {
-  font-family: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Scrollbar — Sleek Dark                         */
-/* ═══════════════════════════════════════════════ */
-
+/* Global Scrollbar - Transparent & Minimal */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+  scrollbar-color: rgba(71, 85, 105, 0.2) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
 }
 
 *::-webkit-scrollbar-track {
@@ -66,17 +18,19 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
+  background: rgba(71, 85, 105, 0.2);
   border-radius: 10px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.5);
+  background: rgba(71, 85, 105, 0.4);
 }
 
+/* Custom Scrollbar */
+/* Custom Scrollbar - Slim & Elegant */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -84,156 +38,34 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
+  background: rgba(71, 85, 105, 0.4);
+  /* Slate-600 with opacity */
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-blue);
+  background: rgba(245, 158, 11, 0.6);
+  /* Amber-500 on hover */
 }
 
-/* ═══════════════════════════════════════════════ */
-/*  Glassmorphism Cards                            */
-/* ═══════════════════════════════════════════════ */
-
-.glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  background: rgba(36, 48, 71, 0.85);
-  border-color: var(--border-mid);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  transform: translateY(-1px);
-}
-
-/* Widget card that mimics Google Cloud Console styling */
-.widget-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.25s ease;
-  position: relative;
-}
-
-.widget-card:hover {
-  border-color: var(--border-mid);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  transform: translateY(-2px);
-}
-
-/* Colored accent bar on top of cards */
-.widget-card-accent {
-  height: 3px;
-  width: 100%;
-  border-radius: 8px 8px 0 0;
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Sidebar Navigation                             */
-/* ═══════════════════════════════════════════════ */
-
-.sidebar-nav {
-  background: var(--bg-secondary);
-  border-left: 1px solid var(--border-subtle);
-}
-
-.sidebar-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 8px;
-  border-radius: 8px;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.sidebar-item:hover {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--accent-blue);
-}
-
-.sidebar-item.active {
-  background: rgba(59, 130, 246, 0.12);
-  color: var(--accent-blue);
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Animations                                     */
-/* ═══════════════════════════════════════════════ */
-
+/* Smooth animations */
 @keyframes slide-in-from-top {
   from {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes breathe {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
 .animate-in {
   animation: slide-in-from-top 0.2s ease-out;
 }
 
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(59, 130, 246, 0.05) 50%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
-}
-
-.animate-breathe {
-  animation: breathe 3s ease-in-out infinite;
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Gradient Backgrounds                           */
-/* ═══════════════════════════════════════════════ */
-
-.bg-dark-gradient {
-  background: linear-gradient(135deg, #0a0e1a 0%, #0f172a 50%, #131c33 100%);
-}
-
-.bg-card-gradient {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(30, 41, 59, 0.6) 100%);
-}
-
-.bg-login-gradient {
-  background: radial-gradient(ellipse at top right, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom left, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-              linear-gradient(135deg, #0a0e1a 0%, #0f172a 100%);
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Utility Classes                                */
-/* ═══════════════════════════════════════════════ */
-
+/* Line clamp utilities */
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -248,82 +80,4 @@ body {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* Focus ring for dark theme */
-.focus-ring:focus-visible {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
-}
-
-/* Drag indicator styling */
-.drag-active {
-  border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
-  background: rgba(59, 130, 246, 0.05) !important;
-}
-
-/* Stat number display */
-.stat-number {
-  font-family: 'Outfit', 'Inter', sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-/* No scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Dark Modal Overrides                           */
-/* ═══════════════════════════════════════════════ */
-
-.dark-modal-overlay {
-  background: rgba(10, 14, 26, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.dark-modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  Input fields in dark theme                     */
-/* ═══════════════════════════════════════════════ */
-
-.dark-input {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--border-mid);
-  color: var(--text-primary);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-  transition: all 0.2s ease;
-}
-
-.dark-input:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-.dark-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* ═══════════════════════════════════════════════ */
-/*  RTL Layout Adjustments                         */
-/* ═══════════════════════════════════════════════ */
-
-[dir="rtl"] .sidebar-nav {
-  border-left: none;
-  border-right: 1px solid var(--border-subtle);
 }
