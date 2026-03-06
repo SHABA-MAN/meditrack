@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FocusModeOverlay from './FocusModeOverlay';
 import EditTaskModal from './EditTaskModal';
 import DataManagement from './DataManagement';
+import { Sidebar, TopBar, FocusQueueWidget, TaskListWidget, WeeklyReviewWidget, WeeklyGoalsWidget, QuickStatsWidget } from './DashboardLayout';
 import { logAchievement } from '../utils/achievements';
 import { formatDate, formatTimeLog } from '../utils/date';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -15,7 +16,7 @@ import { useLectures } from '../hooks/useLectures';
 import {
     CheckCircle, BrainCircuit, Settings, BookOpen, Save, FastForward, Info, Trash2, AlertTriangle, X,
     LogIn, LogOut, User, Plus, Minus, LayoutList, GripHorizontal, Maximize2, Layers, Zap, Coffee,
-    Edit2, Flag, History, Play, Calendar, CheckSquare, Clock, Download
+    Edit2, Flag, History, Play, Calendar, CheckSquare, Clock, Download, Target, FileText, BarChart3, Home
 } from 'lucide-react';
 
 const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
@@ -49,6 +50,17 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
     const [editingSubjectCode, setEditingSubjectCode] = useState(null);
 
     const [editingTask, setEditingTask] = useState(null);
+
+    // Weekly Review & Goals state
+    const getWeekKey = () => {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 1);
+        const weekNum = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
+        return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    };
+    const [weeklyReview, setWeeklyReview] = useState({ done: '', missed: '' });
+    const [weeklyGoals, setWeeklyGoals] = useState({ goal1: '', goal2: '', goal3: '' });
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     const handleGoogleLogin = async () => {
         setAuthError(null);
@@ -102,6 +114,33 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
         });
         return () => unsubHistory();
     }, [user]);
+
+    // Weekly Review & Goals Firebase sync
+    useEffect(() => {
+        if (!user) return;
+        const weekKey = getWeekKey();
+        const reviewRef = doc(db, 'artifacts', appId, 'users', user.uid, 'weekly_review', weekKey);
+        const goalsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'weekly_goals', weekKey);
+        const unsubReview = onSnapshot(reviewRef, (snap) => {
+            if (snap.exists()) setWeeklyReview(snap.data());
+        });
+        const unsubGoals = onSnapshot(goalsRef, (snap) => {
+            if (snap.exists()) setWeeklyGoals(snap.data());
+        });
+        return () => { unsubReview(); unsubGoals(); };
+    }, [user]);
+
+    const saveWeeklyReview = async (data) => {
+        if (!user) return;
+        const weekKey = getWeekKey();
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'weekly_review', weekKey), data, { merge: true });
+    };
+
+    const saveWeeklyGoals = async (data) => {
+        if (!user) return;
+        const weekKey = getWeekKey();
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'weekly_goals', weekKey), data, { merge: true });
+    };
 
     const handleSaveConfig = async (e) => {
         e.preventDefault();
@@ -383,20 +422,20 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4" dir="rtl">
-                <div className="bg-white p-10 rounded-none shadow-md border border-gray-200 w-full max-w-sm text-center">
-                    <div className="w-16 h-16 bg-slate-900 text-white rounded-none flex items-center justify-center mx-auto mb-6">
-                        <BrainCircuit size={32} />
+            <div className="min-h-screen bg-login-gradient flex flex-col items-center justify-center p-4" dir="rtl">
+                <div className="glass-card p-10 rounded-xl w-full max-w-sm text-center animate-fade-in">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-glow-blue animate-float">
+                        <BrainCircuit size={36} />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800 mb-2">MediTrack Pro</h1>
-                    <p className="text-slate-500 mb-8 text-sm">نظام السحب والإفلات الذكي للمذاكرة</p>
-                    <button onClick={handleGoogleLogin} className="w-full bg-slate-800 text-white py-3 rounded-none font-bold flex items-center justify-center gap-2 mb-3 hover:bg-slate-900 transition">
+                    <h1 className="text-2xl font-display font-bold text-white mb-2">MediTrack Pro</h1>
+                    <p className="text-slate-400 mb-8 text-sm">نظام السحب والإفلات الذكي للمذاكرة</p>
+                    <button onClick={handleGoogleLogin} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 mb-3 hover:from-blue-500 hover:to-blue-400 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-[0.98]">
                         <LogIn size={18} /> تسجيل الدخول (Google)
                     </button>
-                    <button onClick={handleGuestLogin} className="w-full bg-white text-slate-600 border border-slate-300 py-3 rounded-none font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition">
+                    <button onClick={handleGuestLogin} className="w-full bg-slate-800/50 text-slate-300 border border-slate-600/50 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-700/50 hover:text-white transition-all active:scale-[0.98]">
                         <User size={18} /> تجربة كزائر
                     </button>
-                    {authError && <div className="mt-4 p-3 bg-red-50 text-red-600 text-xs font-bold border border-red-200">{authError}</div>}
+                    {authError && <div className="mt-4 p-3 bg-red-500/10 text-red-400 text-xs font-bold border border-red-500/20 rounded-lg">{authError}</div>}
                 </div>
             </div>
         );
@@ -407,7 +446,7 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
 
     return (
         <>
-            <div className="min-h-screen bg-gray-100 text-slate-800 font-sans relative" dir="rtl">
+            <div className="min-h-screen bg-dark-gradient text-slate-200 font-sans relative flex" dir="rtl">
                 {isFocusModeActive && (
                     <FocusModeOverlay
                         isFocusAnimating={isFocusAnimating}
@@ -429,285 +468,69 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
                     />
                 )}
 
-                <nav className="bg-white border-b border-gray-200 px-4 py-2 sticky top-0 z-10 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <div className="bg-slate-900 text-white p-1.5 rounded-none">
-                            <BrainCircuit size={16} />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-base text-slate-800 leading-tight">MediTrack</h1>
-                        </div>
-                    </div>
+                {/* Sidebar */}
+                <Sidebar onSwitchToLifeTrack={onSwitchToLifeTrack} onSwitchToTimeBoxing={onSwitchToTimeBoxing} sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
 
-                    <div className="flex-1 w-full md:w-auto overflow-x-auto no-scrollbar mx-4">
-                        <div className="flex gap-3 justify-start md:justify-center">
-                            {Object.keys(SUBJECTS).map(subj => {
-                                const stats = getSubjectStats(subj);
-                                return (
-                                    <div key={subj} className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-none p-1 min-w-[50px] shrink-0">
-                                        <span className={`text-[9px] font-black px-1.5 rounded-none mb-0.5 text-white ${SUBJECTS[subj].badge}`}>
-                                            {subj}
-                                        </span>
-                                        <span className="text-[7px] text-slate-500 font-bold mb-0.5 truncate max-w-[45px]">{SUBJECTS[subj].name}</span>
-                                        <div className="flex items-end gap-0.5 leading-none">
-                                            <span className="text-xs font-bold text-slate-800">{stats.new}</span>
-                                            <span className="text-[8px] text-slate-400 font-medium">/{stats.total}</span>
-                                        </div>
-                                        <span className="text-[7px] text-slate-400 mt-0.5">جديد</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                {/* Main Content */}
+                <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+                    <TopBar SUBJECTS={SUBJECTS} getSubjectStats={getSubjectStats} handleLogout={handleLogout} setShowSettings={setShowSettings} setSettingsTab={setSettingsTab} />
 
-                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                        <button onClick={onSwitchToLifeTrack} className="hidden md:flex bg-slate-900 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-slate-800 transition shadow-sm border border-slate-700 animate-in fade-in"><Zap size={14} className="text-amber-500" /> LifeTrack</button>
-                        <button onClick={onSwitchToTimeBoxing} className="hidden md:flex bg-indigo-600 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-indigo-700 transition shadow-sm border border-indigo-500 animate-in fade-in"><Clock size={14} /> TimeBoxing</button>
-                        <button onClick={() => window.dispatchEvent(new CustomEvent('switchToCalendar'))} className="hidden md:flex bg-emerald-600 text-white px-2 py-1 rounded-none text-xs font-bold items-center gap-1.5 hover:bg-emerald-700 transition shadow-sm"><Calendar size={14} /> التقويم</button>
-                        <button onClick={() => { setShowSettings(true); setSettingsTab('guide'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الدليل"><Info size={16} /></button>
-                        <button onClick={() => { setShowSettings(true); setSettingsTab('manage'); }} className="p-1.5 text-slate-500 hover:bg-gray-100 rounded-none transition" title="الإعدادات"><Settings size={16} /></button>
-                        <div className="h-5 w-px bg-gray-300 mx-1"></div>
-                        <button onClick={handleLogout} className="p-1.5 text-red-500 hover:bg-red-50 rounded-none transition" title="خروج"><LogOut size={16} /></button>
-                    </div>
-                </nav>
-
-                <main className="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-80px)]">
-                    <div
-                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                        onDrop={handleDrop}
-                        className={`lg:col-span-1 rounded-none transition-all duration-500 flex flex-col relative overflow-hidden group ${focusQueue.length === 0 ? 'bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300' : 'bg-white border border-slate-200 shadow-xl'}`}
-                    >
-                        {focusQueue.length === 0 && (
-                            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-                        )}
-
-                        {focusQueue.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-4 z-10">
-                                <div className="w-16 h-16 bg-white rounded-none shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-                                    <Layers size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
-                                </div>
-                                <h3 className="text-base font-black text-slate-800 mb-1.5 tracking-tight">منطقة التركيز</h3>
-                                <p className="text-xs text-slate-500 font-medium mb-6 max-w-[180px] leading-relaxed mx-auto">
-                                    اسحب المحاضرات هنا لبدء جلسة عميقة
-                                </p>
-
-                                <button
-                                    onClick={startFreeFocus}
-                                    className="px-4 py-2 bg-white border border-slate-200 rounded-none text-[10px] font-bold text-slate-600 hover:border-slate-800 hover:bg-slate-800 hover:text-white transition-all shadow-sm flex items-center gap-1.5 group-hover:translate-y-1 mx-auto"
-                                >
-                                    <Coffee size={14} />
-                                    جلسة حرة (بدون مواد)
-                                </button>
+                    <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-min">
+                            {/* Row 1: Focus Queue, Reviews, New Lectures */}
+                            <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                                <FocusQueueWidget focusQueue={focusQueue} handleDrop={handleDrop} handleDragOver={handleDragOver} startFocusSession={startFocusSession} startFreeFocus={startFreeFocus} removeFromQueue={removeFromQueue} SUBJECTS={SUBJECTS} DIFFICULTY_CONFIG={DIFFICULTY_CONFIG} />
                             </div>
-                        ) : (
-                            <div className="flex flex-col h-full bg-slate-50/50">
-                                <div className="p-3 bg-white/80 backdrop-blur-sm border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
-                                    <div>
-                                        <h3 className="text-sm font-black text-slate-800 tracking-tight">طابور المذاكرة</h3>
-                                        <p className="text-[9px] text-slate-400 font-bold mt-0.5">تجهيز {focusQueue.length} محاضرات</p>
-                                    </div>
-                                    <button
-                                        onClick={startFocusSession}
-                                        className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-none font-bold text-[10px] shadow-lg shadow-slate-900/20 hover:shadow-slate-900/40 transition-all flex items-center gap-1.5 transform active:scale-95"
-                                    >
-                                        <Play size={12} fill="currentColor" />
-                                        ابدأ
-                                    </button>
-                                </div>
+                            <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+                                <TaskListWidget title="المراجعات" icon={BrainCircuit} iconColor="text-amber-400" accentGradient="bg-gradient-to-r from-amber-500 to-orange-500" badgeColor="text-amber-400 bg-amber-500/10" tasks={reviews} SUBJECTS={SUBJECTS} isMobile={isMobile} handleDragStart={handleDragStart} addToQueue={addToQueue} openEditModal={openEditModal} emptyMessage="كل شيء تحت السيطرة!" />
+                            </div>
+                            <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+                                <TaskListWidget title="الجديد" icon={BookOpen} iconColor="text-blue-400" accentGradient="bg-gradient-to-r from-blue-500 to-indigo-500" badgeColor="text-blue-400 bg-blue-500/10" tasks={news} SUBJECTS={SUBJECTS} isMobile={isMobile} handleDragStart={handleDragStart} addToQueue={addToQueue} openEditModal={openEditModal} emptyMessage="لا يوجد مواد جديدة حالياً." emptyAction={<button onClick={() => { setShowSettings(true); setSettingsTab('config') }} className="mt-1 text-blue-400 text-[10px] font-bold hover:underline">ضبط الإعدادات</button>} />
+                            </div>
 
-                                <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-                                    {focusQueue.map((task) => (
-                                        <div key={task.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 shadow-sm rounded-none group/item hover:border-blue-300 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 flex items-center justify-center text-[10px] font-bold text-white rounded-none ${SUBJECTS[task.subject]?.badge || 'bg-slate-500'}`}>
-                                                    {task.subject}
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold text-slate-800 text-xs block">Lec {task.number}</span>
-                                                    <span className="text-[9px] text-blue-600 block font-bold">{SUBJECTS[task.subject]?.name}</span>
-                                                    <div className="flex flex-wrap gap-1 items-center">
-                                                        {task.title && <span className="text-[9px] font-medium text-slate-500">{task.title}</span>}
-                                                        {task.difficulty && DIFFICULTY_CONFIG[task.difficulty] && (
-                                                            <>
-                                                                {task.title && <span className="text-slate-300 text-[9px]">•</span>}
-                                                                <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[task.difficulty].bg} ${DIFFICULTY_CONFIG[task.difficulty].text} ${DIFFICULTY_CONFIG[task.difficulty].border} border`}>
-                                                                    {DIFFICULTY_CONFIG[task.difficulty].emoji}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => removeFromQueue(task.id)} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-none transition-colors">
-                                                <X size={14} />
-                                            </button>
-                                        </div>
+                            {/* Row 2: Weekly Review, Weekly Goals */}
+                            <div className="md:col-span-1 lg:col-span-2 animate-slide-up" style={{ animationDelay: '150ms' }}>
+                                <WeeklyReviewWidget weeklyReview={weeklyReview} setWeeklyReview={setWeeklyReview} saveWeeklyReview={saveWeeklyReview} />
+                            </div>
+                            <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+                                <WeeklyGoalsWidget weeklyGoals={weeklyGoals} setWeeklyGoals={setWeeklyGoals} saveWeeklyGoals={saveWeeklyGoals} />
+                            </div>
+
+                            {/* Row 3: Quick Stats */}
+                            <div className="animate-slide-up" style={{ animationDelay: '250ms' }}>
+                                <QuickStatsWidget reviews={reviews} news={news} history={history} focusQueue={focusQueue} />
+                            </div>
+                        </div>
+                    </main>
+                </div>
+
+                {/* Settings Modal — Dark Theme */}
+                {showSettings && (
+                    <div className="fixed inset-0 dark-modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="dark-modal w-full max-w-2xl rounded-xl overflow-hidden flex flex-col max-h-[85vh] animate-slide-up">
+                            <div className="bg-dark-850 p-4 border-b border-white/5 flex justify-between items-center">
+                                <div className="flex gap-3 overflow-x-auto no-scrollbar">
+                                    {[
+                                        { id: 'guide', label: 'الدليل' }, { id: 'mobile', label: 'الموبايل' }, { id: 'subjects', label: 'المواد' },
+                                        { id: 'config', label: 'الأعداد' }, { id: 'manage', label: 'التقدم' }, { id: 'history', label: 'السجل' },
+                                        { id: 'danger', label: 'تصفير', danger: true }
+                                    ].map(tab => (
+                                        <button key={tab.id} onClick={() => setSettingsTab(tab.id)}
+                                            className={`text-xs font-bold pb-1 whitespace-nowrap transition ${settingsTab === tab.id ? (tab.danger ? 'text-red-400 border-b-2 border-red-400' : 'text-blue-400 border-b-2 border-blue-400') : 'text-slate-500 hover:text-slate-300'}`}>
+                                            {tab.label}
+                                        </button>
                                     ))}
                                 </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="lg:col-span-1 bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
-                        <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <div className="flex items-center gap-1.5">
-                                <div className="p-1 bg-amber-100/50 text-amber-600 rounded-none">
-                                    <BrainCircuit size={14} />
-                                </div>
-                                <span className="font-bold text-sm text-slate-700">المراجعات</span>
-                            </div>
-                            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-none">{reviews.length}</span>
-                        </div>
-
-                        <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
-                            {reviews.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                                    <CheckCircle size={32} className="mb-3 text-emerald-100" />
-                                    <p className="font-medium text-xs">كل شيء تحت السيطرة!</p>
-                                </div>
-                            ) : (
-                                reviews.map(r => (
-                                    <div
-                                        key={r.id}
-                                        draggable={!isMobile}
-                                        onDragStart={(e) => !isMobile && handleDragStart(e, r)}
-                                        className={`bg-white p-2.5 rounded-none border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group relative ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-2 flex-1">
-                                                <div className={`mt-0.5 w-1 h-6 rounded-none ${SUBJECTS[r.subject]?.badge || 'bg-slate-300'}`}></div>
-                                                <div className="flex-1">
-                                                    <span className="font-black text-slate-700 text-xs">Lec {r.number}</span>
-                                                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded-none text-white ${SUBJECTS[r.subject]?.badge}`}>{r.subject}</span>
-                                                    <span className="text-[9px] text-slate-400 font-bold">{SUBJECTS[r.subject]?.name}</span>
-                                                    <div className="flex flex-wrap gap-1.5 text-[9px] items-center">
-                                                        {r.title ? <span className="font-medium text-slate-600">{r.title}</span> : <span className="text-slate-400 italic">بدون عنوان</span>}
-                                                        <span className="text-slate-300">•</span>
-                                                        <span className="text-slate-500">تكرار {r.stage}</span>
-                                                        {r.difficulty && DIFFICULTY_CONFIG[r.difficulty] && (
-                                                            <>
-                                                                <span className="text-slate-300">•</span>
-                                                                <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[r.difficulty].bg} ${DIFFICULTY_CONFIG[r.difficulty].text} ${DIFFICULTY_CONFIG[r.difficulty].border} border`}>
-                                                                    {DIFFICULTY_CONFIG[r.difficulty].emoji} {DIFFICULTY_CONFIG[r.difficulty].label}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-0.5">
-                                                {isMobile && (
-                                                    <button
-                                                        onClick={() => addToQueue(r)}
-                                                        className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-none transition-colors"
-                                                        title="إضافة للقائمة"
-                                                    >
-                                                        <Plus size={14} />
-                                                    </button>
-                                                )}
-                                                <button onClick={() => openEditModal(r)} className={`text-slate-300 hover:text-blue-500 p-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                                    <Edit2 size={10} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-1 bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full">
-                        <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <div className="flex items-center gap-1.5">
-                                <div className="p-1 bg-blue-100/50 text-blue-600 rounded-none">
-                                    <BookOpen size={14} />
-                                </div>
-                                <span className="font-bold text-sm text-slate-700">الجديد</span>
-                            </div>
-                            <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-none">{news.length}</span>
-                        </div>
-
-                        <div className="p-3 overflow-y-auto flex-1 space-y-2 custom-scrollbar">
-                            {news.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-300 pb-10">
-                                    <p className="font-medium text-xs">لا يوجد مواد جديدة حالياً.</p>
-                                    <button onClick={() => { setShowSettings(true); setSettingsTab('config') }} className="mt-1.5 text-blue-500 text-[10px] font-bold hover:underline">ضبط الإعدادات</button>
-                                </div>
-                            ) : (
-                                news.map(n => (
-                                    <div
-                                        key={n.id}
-                                        draggable={!isMobile}
-                                        onDragStart={(e) => !isMobile && handleDragStart(e, n)}
-                                        className={`bg-white p-2 rounded-none border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex items-center justify-between ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                    >
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className={`w-7 h-7 rounded-none flex items-center justify-center text-[9px] font-black text-white shadow-sm ${SUBJECTS[n.subject]?.badge}`}>
-                                                {n.subject}
-                                            </div>
-                                            <div className="flex-1">
-                                                <span className="font-bold text-slate-700 text-xs block">Lecture {n.number}</span>
-                                                <span className="text-[9px] text-blue-600 block font-bold mb-0.5">{SUBJECTS[n.subject]?.name}</span>
-                                                <div className="flex flex-wrap gap-1 items-center">
-                                                    {n.title && <span className="text-[9px] text-slate-500">{n.title}</span>}
-                                                    {n.difficulty && DIFFICULTY_CONFIG[n.difficulty] && (
-                                                        <>
-                                                            {n.title && <span className="text-slate-300 text-[9px]">•</span>}
-                                                            <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[n.difficulty].bg} ${DIFFICULTY_CONFIG[n.difficulty].text} ${DIFFICULTY_CONFIG[n.difficulty].border} border`}>
-                                                                {DIFFICULTY_CONFIG[n.difficulty].emoji} {DIFFICULTY_CONFIG[n.difficulty].label}
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-0.5">
-                                            {isMobile && (
-                                                <button
-                                                    onClick={() => addToQueue(n)}
-                                                    className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-none transition-colors"
-                                                    title="إضافة للقائمة"
-                                                >
-                                                    <Plus size={14} />
-                                                </button>
-                                            )}
-                                            <button onClick={() => openEditModal(n)} className={`text-slate-300 hover:text-blue-500 p-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                                <Edit2 size={10} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
-                </main>
-
-                {showSettings && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-white w-full max-w-2xl rounded-none shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
-                            <div className="bg-slate-50 p-4 border-b flex justify-between items-center">
-                                <div className="flex gap-4 overflow-x-auto">
-                                    <button onClick={() => setSettingsTab('guide')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'guide' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الدليل</button>
-                                    <button onClick={() => setSettingsTab('mobile')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'mobile' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الموبايل</button>
-                                    <button onClick={() => setSettingsTab('subjects')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'subjects' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>المواد</button>
-                                    <button onClick={() => setSettingsTab('config')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>الأعداد</button>
-                                    <button onClick={() => setSettingsTab('manage')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'manage' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>التقدم</button>
-                                    <button onClick={() => setSettingsTab('history')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'history' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>السجل</button>
-                                    <button onClick={() => setSettingsTab('danger')} className={`text-sm font-bold pb-1 whitespace-nowrap ${settingsTab === 'danger' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500'}`}>تصفير</button>
-                                </div>
-                                <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+                                <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white transition"><X size={18} /></button>
                             </div>
 
-                            <div className="p-6 overflow-y-auto bg-white flex-1">
+                            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                                 {settingsTab === 'guide' && (
-                                    <div className="space-y-4 text-slate-600 text-sm">
-                                        <h3 className="font-bold text-slate-800">طريقة الاستخدام الجديدة 🖱️</h3>
+                                    <div className="space-y-4 text-slate-300 text-sm">
+                                        <h3 className="font-bold text-white">طريقة الاستخدام الجديدة 🖱️</h3>
                                         <p>النظام الآن يعتمد على السحب والإفلات للتركيز العميق.</p>
-                                        <ul className="list-disc list-inside space-y-2 bg-blue-50 p-4 rounded-none border border-blue-100 text-blue-800">
-                                            <li><strong>الخطوة 1:</strong> اسحب أي عدد من المحاضرات (1، 2، أو أكثر) إلى منطقة التركيز.</li>
+                                        <ul className="list-disc list-inside space-y-2 bg-blue-500/5 p-4 rounded-lg border border-blue-500/10 text-blue-300">
+                                            <li><strong>الخطوة 1:</strong> اسحب أي عدد من المحاضرات إلى منطقة التركيز.</li>
                                             <li><strong>الخطوة 2:</strong> اضغط "ابدأ الجلسة" للدخول في وضع التركيز.</li>
                                             <li><strong>الخطوة 3:</strong> كل إنجاز سيتم حفظه تلقائياً في سجل الجلسات.</li>
                                         </ul>
@@ -716,27 +539,20 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
 
                                 {settingsTab === 'mobile' && (
                                     <div className="space-y-6 text-center">
-                                        <div className="bg-slate-900 text-white p-6 rounded-none shadow-lg mt-4 inline-block mx-auto">
+                                        <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-6 rounded-xl shadow-lg inline-block mx-auto">
                                             <BrainCircuit size={48} className="mx-auto mb-2" />
                                             <h3 className="text-xl font-bold mb-1">نسخة الموبايل</h3>
-                                            <p className="text-slate-400 text-sm">MediTrack Mobile Manager</p>
+                                            <p className="text-blue-200 text-sm">MediTrack Mobile Manager</p>
                                         </div>
-
                                         <div className="max-w-md mx-auto space-y-4">
-                                            <p className="font-bold text-slate-800">كيفية التثبيت على الآيفون:</p>
-                                            <ol className="text-sm text-slate-600 space-y-2 text-right list-decimal list-inside bg-gray-50 p-4 border border-gray-200">
+                                            <p className="font-bold text-white">كيفية التثبيت على الآيفون:</p>
+                                            <ol className="text-sm text-slate-300 space-y-2 text-right list-decimal list-inside bg-slate-800/50 p-4 border border-white/5 rounded-lg">
                                                 <li>اضغط على الزر بالأسفل لفتح صفحة المدير.</li>
                                                 <li>اضغط على زر المشاركة (Share) في المتصفح.</li>
-                                                <li>اختر <strong>"إضافة إلى الشاشة الرئيسية" (Add to Home Screen)</strong>.</li>
-                                                <li>سيظهر أيقونة التطبيق على شاشتك تعمل بكفاءة عالية!</li>
+                                                <li>اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>.</li>
+                                                <li>سيظهر أيقونة التطبيق على شاشتك!</li>
                                             </ol>
-
-                                            <a
-                                                href="#/manage"
-                                                className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-none transition shadow-md"
-                                            >
-                                                فتح صفحة المدير الآن
-                                            </a>
+                                            <a href="#/manage" className="block w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-3 rounded-lg transition shadow-lg hover:shadow-blue-500/30">فتح صفحة المدير الآن</a>
                                         </div>
                                     </div>
                                 )}
@@ -744,96 +560,49 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
                                 {settingsTab === 'subjects' && (
                                     <div className="space-y-6">
                                         <div className="space-y-3">
-                                            <h3 className="font-bold text-slate-800 text-sm mb-2">المواد الحالية</h3>
+                                            <h3 className="font-bold text-white text-sm mb-2">المواد الحالية</h3>
                                             <div className="grid grid-cols-1 gap-2">
                                                 {Object.entries(subjects).map(([code, subj]) => (
-                                                    <div key={code} className="flex items-center justify-between p-3 border rounded-none bg-gray-50">
+                                                    <div key={code} className="flex items-center justify-between p-3 border border-white/5 rounded-lg bg-slate-800/50">
                                                         <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-none flex items-center justify-center text-[10px] font-bold text-white ${subj.badge}`}>{code}</div>
-                                                            <div>
-                                                                <p className="font-bold text-sm text-slate-800">{subj.name}</p>
-                                                                <p className="text-[10px] text-slate-400">Code: {code}</p>
-                                                            </div>
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${subj.badge}`}>{code}</div>
+                                                            <div><p className="font-bold text-sm text-white">{subj.name}</p><p className="text-[10px] text-slate-500">Code: {code}</p></div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            <button onClick={() => handleEditSubject(code)} className="text-blue-400 hover:text-blue-600 bg-white p-2 border rounded-none hover:bg-blue-50 transition" title="تعديل المادة">
-                                                                <Edit2 size={14} />
-                                                            </button>
-                                                            <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-600 bg-white p-2 border rounded-none hover:bg-red-50 transition" title="حذف المادة">
-                                                                <Trash2 size={14} />
-                                                            </button>
+                                                            <button onClick={() => handleEditSubject(code)} className="text-blue-400 hover:text-blue-300 p-2 border border-white/5 rounded-lg hover:bg-blue-500/10 transition"><Edit2 size={14} /></button>
+                                                            <button onClick={() => deleteSubject(code)} className="text-red-400 hover:text-red-300 p-2 border border-white/5 rounded-lg hover:bg-red-500/10 transition"><Trash2 size={14} /></button>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-
-                                        <div className="bg-slate-50 p-4 rounded-none border border-slate-200">
+                                        <div className="bg-slate-800/50 p-4 rounded-lg border border-white/5">
                                             <div className="flex justify-between items-center mb-3">
-                                                <h3 className="font-bold text-slate-800 text-sm">{editingSubjectCode ? 'تعديل المادة' : 'إضافة مادة جديدة'}</h3>
-                                                {editingSubjectCode && <button onClick={cancelEditSubject} className="text-xs text-red-500 font-bold hover:underline">إلغاء</button>}
+                                                <h3 className="font-bold text-white text-sm">{editingSubjectCode ? 'تعديل المادة' : 'إضافة مادة جديدة'}</h3>
+                                                {editingSubjectCode && <button onClick={cancelEditSubject} className="text-xs text-red-400 font-bold hover:underline">إلغاء</button>}
                                             </div>
                                             <form onSubmit={handleAddSubject} className="space-y-3">
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">الكود (EN)</label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="مثلاً ANAT"
-                                                            value={newSubject.code}
-                                                            onChange={e => setNewSubject({ ...newSubject, code: e.target.value.toUpperCase() })}
-                                                            maxLength={5}
-                                                            disabled={!!editingSubjectCode}
-                                                            className={`w-full px-3 py-2 rounded-none border text-sm uppercase font-mono ${editingSubjectCode ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : ''}`}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">الاسم</label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="مثلاً تشريح"
-                                                            className="w-full px-3 py-2 rounded-none border text-sm"
-                                                            value={newSubject.name}
-                                                            onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
-                                                        />
-                                                    </div>
+                                                    <div><label className="block text-[10px] font-bold text-slate-400 mb-1">الكود (EN)</label><input type="text" placeholder="مثلاً ANAT" value={newSubject.code} onChange={e => setNewSubject({ ...newSubject, code: e.target.value.toUpperCase() })} maxLength={5} disabled={!!editingSubjectCode} className={`dark-input w-full uppercase font-mono ${editingSubjectCode ? 'opacity-50 cursor-not-allowed' : ''}`} /></div>
+                                                    <div><label className="block text-[10px] font-bold text-slate-400 mb-1">الاسم</label><input type="text" placeholder="مثلاً تشريح" className="dark-input w-full" value={newSubject.name} onChange={e => setNewSubject({ ...newSubject, name: e.target.value })} /></div>
                                                 </div>
-
-                                                <div>
-                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">اللون</label>
+                                                <div><label className="block text-[10px] font-bold text-slate-400 mb-1">اللون</label>
                                                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                                         {Object.entries(THEMES).map(([key, theme]) => (
-                                                            <button
-                                                                key={key}
-                                                                type="button"
-                                                                onClick={() => setNewSubject({ ...newSubject, theme: key })}
-                                                                className={`w-8 h-8 shrink-0 rounded-none flex items-center justify-center border-2 transition ${newSubject.theme === key ? 'border-slate-800 scale-110' : 'border-transparent'} ${theme.badge}`}
-                                                                title={theme.name}
-                                                            >
+                                                            <button key={key} type="button" onClick={() => setNewSubject({ ...newSubject, theme: key })} className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center border-2 transition ${newSubject.theme === key ? 'border-white scale-110' : 'border-transparent'} ${theme.badge}`} title={theme.name}>
                                                                 {newSubject.theme === key && <CheckCircle size={14} className="text-white" />}
                                                             </button>
                                                         ))}
                                                     </div>
                                                 </div>
-
-                                                <button type="submit" className={`w-full text-white py-2 rounded-none font-bold text-sm hover:opacity-90 transition flex items-center justify-center gap-2 ${editingSubjectCode ? 'bg-blue-600' : 'bg-slate-900'}`}>
+                                                <button type="submit" className={`w-full text-white py-2 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${editingSubjectCode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500'}`}>
                                                     {editingSubjectCode ? <Save size={16} /> : <Plus size={16} />}
                                                     {editingSubjectCode ? 'حفظ التعديلات' : 'إضافة المادة'}
                                                 </button>
                                             </form>
-
-                                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!user) return;
-                                                        if (!confirm('هل تريد إعادة تعيين أسماء المواد الافتراضية؟ (سيتم تحديث الأسماء فقط، لن يتم حذف أي بيانات)')) return;
-                                                        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), DEFAULT_SUBJECTS);
-                                                        toast.success('تم تحديث أسماء المواد بنجاح! ✅');
-                                                    }}
-                                                    className="w-full bg-amber-600 text-white py-2 rounded-none font-bold text-xs hover:bg-amber-700 transition flex items-center justify-center gap-2"
-                                                >
-                                                    <AlertTriangle size={14} />
-                                                    إعادة تعيين الأسماء الافتراضية
+                                            <div className="mt-4 pt-4 border-t border-white/5">
+                                                <button onClick={async () => { if (!user) return; if (!confirm('هل تريد إعادة تعيين أسماء المواد الافتراضية؟')) return; await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'definitions'), DEFAULT_SUBJECTS); toast.success('تم تحديث أسماء المواد بنجاح! ✅'); }} className="w-full bg-amber-600/20 text-amber-400 border border-amber-500/20 py-2 rounded-lg font-bold text-xs hover:bg-amber-600/30 transition flex items-center justify-center gap-2">
+                                                    <AlertTriangle size={14} /> إعادة تعيين الأسماء الافتراضية
                                                 </button>
                                             </div>
                                         </div>
@@ -842,54 +611,47 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
 
                                 {settingsTab === 'config' && (
                                     <form onSubmit={handleSaveConfig} className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-3">
                                             {Object.keys(SUBJECTS).map(subj => (
-                                                <div key={subj} className="flex items-center gap-2 border p-2 rounded-none">
-                                                    <span className={`w-10 font-bold text-center text-xs py-1 rounded-none ${SUBJECTS[subj].color}`}>{subj}</span>
-                                                    <input type="number" min="0" className="w-full text-center outline-none font-bold text-slate-700" value={tempConfig[subj]} onChange={e => setTempConfig({ ...tempConfig, [subj]: e.target.value })} />
+                                                <div key={subj} className="flex items-center gap-2 border border-white/5 p-2 rounded-lg bg-slate-800/50">
+                                                    <span className={`w-10 font-bold text-center text-xs py-1 rounded-md text-white ${SUBJECTS[subj].badge}`}>{subj}</span>
+                                                    <input type="number" min="0" className="dark-input w-full text-center font-bold" value={tempConfig[subj]} onChange={e => setTempConfig({ ...tempConfig, [subj]: e.target.value })} />
                                                 </div>
                                             ))}
                                         </div>
-                                        <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded-none font-bold hover:bg-slate-900 mt-4">حفظ الأعداد</button>
-                                        <div className="mt-6 pt-4 border-t">
-                                            <button type="button" onClick={markFirstFiveAsStudied} className="text-amber-600 text-xs font-bold hover:underline flex items-center gap-1"><FastForward size={14} /> تفعيل مراجعة أول 5 محاضرات فوراً</button>
+                                        <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2 rounded-lg font-bold hover:from-blue-500 hover:to-blue-400 mt-4 transition">حفظ الأعداد</button>
+                                        <div className="mt-4 pt-4 border-t border-white/5">
+                                            <button type="button" onClick={markFirstFiveAsStudied} className="text-amber-400 text-xs font-bold hover:underline flex items-center gap-1"><FastForward size={14} /> تفعيل مراجعة أول 5 محاضرات فوراً</button>
                                         </div>
                                     </form>
                                 )}
 
                                 {settingsTab === 'manage' && (
                                     <div>
-                                        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+                                        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
                                             {Object.keys(SUBJECTS).map(subj => (
-                                                <button key={subj} onClick={() => setSelectedManageSubject(subj)} className={`px-3 py-1 rounded-none text-xs font-bold border transition ${selectedManageSubject === subj ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}>
-                                                    {subj}
-                                                </button>
+                                                <button key={subj} onClick={() => setSelectedManageSubject(subj)} className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${selectedManageSubject === subj ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800/50 text-slate-400 border-white/5 hover:border-white/10'}`}>{subj}</button>
                                             ))}
                                         </div>
-                                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                                            {getSubjectLectures(selectedManageSubject, config).length === 0 ? <p className="text-center text-slate-400 text-xs py-4">لا توجد محاضرات.</p> : getSubjectLectures(selectedManageSubject, config).map(lecture => (
-                                                <div key={lecture.id} className="flex justify-between items-center p-2 border rounded-none hover:bg-slate-50 group">
+                                        <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                            {getSubjectLectures(selectedManageSubject, config).length === 0 ? <p className="text-center text-slate-500 text-xs py-4">لا توجد محاضرات.</p> : getSubjectLectures(selectedManageSubject, config).map(lecture => (
+                                                <div key={lecture.id} className="flex justify-between items-center p-2 border border-white/5 rounded-lg hover:bg-slate-800/50 group transition">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-700">Lec {lecture.number}</span>
+                                                        <span className="text-sm font-bold text-white">Lec {lecture.number}</span>
                                                         <div className="flex flex-wrap gap-1 items-center">
-                                                            {lecture.title && <span className="text-[10px] text-blue-600">{lecture.title}</span>}
+                                                            {lecture.title && <span className="text-[10px] text-blue-400">{lecture.title}</span>}
                                                             {lecture.difficulty && DIFFICULTY_CONFIG[lecture.difficulty] && (
-                                                                <>
-                                                                    {lecture.title && <span className="text-slate-300 text-[9px]">•</span>}
-                                                                    <span className={`px-1.5 py-0.5 rounded-none text-[8px] font-bold ${DIFFICULTY_CONFIG[lecture.difficulty].bg} ${DIFFICULTY_CONFIG[lecture.difficulty].text} ${DIFFICULTY_CONFIG[lecture.difficulty].border} border`}>
-                                                                        {DIFFICULTY_CONFIG[lecture.difficulty].emoji} {DIFFICULTY_CONFIG[lecture.difficulty].label}
-                                                                    </span>
-                                                                </>
+                                                                <>{lecture.title && <span className="text-slate-600 text-[9px]">•</span>}<span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${DIFFICULTY_CONFIG[lecture.difficulty].darkBg} ${DIFFICULTY_CONFIG[lecture.difficulty].darkText} border ${DIFFICULTY_CONFIG[lecture.difficulty].darkBorder}`}>{DIFFICULTY_CONFIG[lecture.difficulty].emoji} {DIFFICULTY_CONFIG[lecture.difficulty].label}</span></>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <button onClick={() => openEditModal(lecture)} className="p-1 text-slate-300 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                        <div className="h-4 w-px bg-slate-200 mx-1"></div>
-                                                        <span className="text-[10px] text-slate-400 mr-2">{lecture.stage >= 5 ? 'Done' : `Stage ${lecture.stage}`}</span>
-                                                        <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))} className="p-1 bg-gray-100 rounded-none hover:bg-gray-200"><Minus size={12} /></button>
-                                                        <span className="w-4 text-center text-xs font-bold">{lecture.stage}</span>
-                                                        <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.min(5, lecture.stage + 1))} className="p-1 bg-gray-100 rounded-none hover:bg-gray-200"><Plus size={12} /></button>
+                                                        <button onClick={() => openEditModal(lecture)} className="p-1 text-slate-600 hover:text-blue-400 transition"><Edit2 size={14} /></button>
+                                                        <div className="h-4 w-px bg-slate-700 mx-1" />
+                                                        <span className="text-[10px] text-slate-500 mr-2">{lecture.stage >= 5 ? 'Done' : `Stage ${lecture.stage}`}</span>
+                                                        <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.max(0, lecture.stage - 1))} className="p-1 bg-slate-800 rounded-md hover:bg-slate-700 transition"><Minus size={12} /></button>
+                                                        <span className="w-4 text-center text-xs font-bold text-white">{lecture.stage}</span>
+                                                        <button onClick={() => manualStageUpdate(selectedManageSubject, lecture.number, Math.min(5, lecture.stage + 1))} className="p-1 bg-slate-800 rounded-md hover:bg-slate-700 transition"><Plus size={12} /></button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -899,40 +661,26 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
 
                                 {settingsTab === 'history' && (
                                     <div>
-                                        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                            <History size={18} className="text-blue-500" />
-                                            سجل الإنجازات
-                                        </h3>
-                                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                                        <h3 className="font-bold text-white mb-4 flex items-center gap-2"><History size={18} className="text-blue-400" /> سجل الإنجازات</h3>
+                                        <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
                                             {history.length === 0 ? (
-                                                <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-none">
-                                                    لم تقم بأي جلسات بعد. ابدأ الآن! 🚀
-                                                </div>
-                                            ) : (
-                                                history.map((log) => (
-                                                    <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-none hover:border-blue-200 transition">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-none flex items-center justify-center text-[10px] font-bold text-white ${SUBJECTS[log.subject]?.badge || 'bg-slate-400'}`}>
-                                                                {log.subject}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-bold text-sm text-slate-700">Lecture {log.number}</p>
-                                                                <span className="text-[9px] text-blue-600 block font-bold mb-0.5">{SUBJECTS[log.subject]?.name}</span>
-                                                                {log.title && <p className="text-[10px] text-slate-500">{log.title}</p>}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-none inline-block mb-1">
-                                                                {log.stageCompleted === 0 ? 'مذاكرة أولى' : `مراجعة ${log.stageCompleted}`}
-                                                            </div>
-                                                            <div className="text-[10px] text-slate-400 flex items-center gap-1 justify-end">
-                                                                <Calendar size={10} />
-                                                                {formatDate(log.completedAt)} - {formatTimeLog(log.completedAt)}
-                                                            </div>
+                                                <div className="text-center py-8 text-slate-500 border-2 border-dashed border-white/5 rounded-lg">لم تقم بأي جلسات بعد. ابدأ الآن! 🚀</div>
+                                            ) : history.map(log => (
+                                                <div key={log.id} className="flex items-center justify-between p-3 bg-slate-800/50 border border-white/5 rounded-lg hover:border-blue-500/20 transition">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${SUBJECTS[log.subject]?.badge || 'bg-slate-500'}`}>{log.subject}</div>
+                                                        <div>
+                                                            <p className="font-bold text-sm text-white">Lecture {log.number}</p>
+                                                            <span className="text-[9px] text-blue-400 block font-bold">{SUBJECTS[log.subject]?.name}</span>
+                                                            {log.title && <p className="text-[10px] text-slate-400">{log.title}</p>}
                                                         </div>
                                                     </div>
-                                                ))
-                                            )}
+                                                    <div className="text-left">
+                                                        <div className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md inline-block mb-1">{log.stageCompleted === 0 ? 'مذاكرة أولى' : `مراجعة ${log.stageCompleted}`}</div>
+                                                        <div className="text-[10px] text-slate-500 flex items-center gap-1 justify-end"><Calendar size={10} />{formatDate(log.completedAt)} - {formatTimeLog(log.completedAt)}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -940,18 +688,14 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
                                 {settingsTab === 'danger' && (
                                     <div className="space-y-2">
                                         {Object.keys(SUBJECTS).map(subj => (
-                                            <div key={subj} className="flex justify-between items-center p-3 border border-red-100 bg-red-50 rounded-none">
-                                                <span className="font-bold text-red-800 text-sm">{subj}</span>
-                                                <button onClick={() => resetSubjectProgress(subj)} className="text-red-600 text-xs font-bold hover:underline flex items-center gap-1"><Trash2 size={14} /> تصفير</button>
+                                            <div key={subj} className="flex justify-between items-center p-3 border border-red-500/20 bg-red-500/5 rounded-lg">
+                                                <span className="font-bold text-red-400 text-sm">{subj}</span>
+                                                <button onClick={() => resetSubjectProgress(subj)} className="text-red-400 text-xs font-bold hover:underline flex items-center gap-1"><Trash2 size={14} /> تصفير</button>
                                             </div>
                                         ))}
-                                        <div className="border-t border-slate-200 pt-4 mt-4">
-                                            <button
-                                                onClick={() => setShowDataManagement(true)}
-                                                className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-none transition text-sm"
-                                            >
-                                                <Download size={16} />
-                                                تصدير / استيراد البيانات
+                                        <div className="border-t border-white/5 pt-4 mt-4">
+                                            <button onClick={() => setShowDataManagement(true)} className="w-full flex items-center justify-center gap-2 bg-amber-600/20 text-amber-400 border border-amber-500/20 font-bold py-2.5 rounded-lg transition text-sm hover:bg-amber-600/30">
+                                                <Download size={16} /> تصدير / استيراد البيانات
                                             </button>
                                         </div>
                                     </div>
@@ -960,12 +704,12 @@ const MediTrackApp = ({ onSwitchToLifeTrack, onSwitchToTimeBoxing, user }) => {
                         </div>
                     </div>
                 )}
-
             </div>
 
             {/* Data Management Modal */}
             {showDataManagement && <DataManagement user={user} onClose={() => setShowDataManagement(false)} />}
         </>
+
     );
 };
 
